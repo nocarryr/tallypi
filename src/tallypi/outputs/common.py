@@ -1,0 +1,1 @@
+from tslumd import TallyColor
