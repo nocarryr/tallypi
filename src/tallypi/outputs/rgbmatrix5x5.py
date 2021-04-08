@@ -142,7 +142,7 @@ class Matrix(Base):
     update_queue: asyncio.Queue
     def __init__(self, start_index: int):
         self.start_index = start_index
-        self.end_index = start_index + 5
+        self.end_index = start_index + 4
         self.colors = {(x,y):TallyColor.OFF for y in range(5) for x in range(5)}
         self.update_queue = asyncio.Queue()
         self._update_task = None
