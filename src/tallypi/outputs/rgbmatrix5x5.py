@@ -1,25 +1,47 @@
+"""An RGB LED display of 5x5 pixels made by `pimoroni`_
+
+Currently uses the `library`_ maintained by the manufacturer for device
+communication
+
+
+.. _pimoroni: https://shop.pimoroni.com/products/5x5-rgb-matrix-breakout
+.. _library: https://github.com/pimoroni/rgbmatrix5x5-python
+
+"""
 from loguru import logger
 import asyncio
-from typing import Dict, Tuple, Iterable, Optional, Any
+from typing import Dict, Tuple, Iterable, Optional, Any, ClassVar
 from rgbmatrix5x5 import RGBMatrix5x5
 from tslumd import TallyType, TallyColor, Tally
 
 Pixel = Tuple[int, int]
 
 class Base:
-    color_map: Dict[TallyColor, Tuple] = {
+    """Base class for RGBMatrix5x5 displays
+    """
+    color_map: ClassVar[Dict[TallyColor, Tuple]] = {
         TallyColor.OFF: (0, 0, 0),
         TallyColor.RED: (255, 0, 0),
         TallyColor.GREEN: (0, 255, 0),
         TallyColor.AMBER: (255, 255, 0),
     }
+    """Mapping of :class:`tslumd.common.TallyColor` to tuples of ``(r, g, b)``
+    """
+
     device: RGBMatrix5x5
+    """The :class:`rgbmatrix5x5.RGBMatrix5x5` instance
+    """
     running: bool
+    """``True`` if the display is running
+    """
+
     def __init__(self, *args):
         self.device = None
         self.running = False
 
     async def open(self):
+        """Create the :attr:`device` instance and initialize
+        """
         if self.running:
             return
         if self.device is None:
@@ -29,6 +51,8 @@ class Base:
         self.running = True
 
     async def close(self):
+        """Close the :attr:`device`
+        """
         if not self.running:
             return
         self.running = False
@@ -38,6 +62,8 @@ class Base:
             self.device = None
 
     async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
+        """Callback for tally updates from :class:`tslumd.receiver.UmdReceiver`
+        """
         pass
 
     async def __aenter__(self):
@@ -48,8 +74,10 @@ class Base:
         await self.close()
 
 class Indicator(Base):
-    tally_index: int
-    tally_type: TallyType
+    """Show a solid color for a single :class:`~tslumd.tallyobj.Tally`
+    """
+    tally_index: int #: The tally index
+    tally_type: TallyType #: The :class:`~tslumd.common.TallyType`
     def __init__(self, tally_index: int, tally_type: TallyType):
         self.tally_index = tally_index
         self.tally_type = tally_type
@@ -58,6 +86,13 @@ class Indicator(Base):
         super().__init__()
 
     async def set_color(self, color: TallyColor):
+        """Set all pixels of the :attr:`device` to the given color
+
+        The rgb values are retrieved from the :attr:`~.Base.color_map`
+
+        Arguments:
+            color: The :class:`~tslumd.common.TallyColor`
+        """
         if not self.running:
             return
         rgb = self.color_map[color]
@@ -66,6 +101,11 @@ class Indicator(Base):
         self._color = color
 
     async def set_brightness(self, brightness: float):
+        """Set the brightness of the device
+
+        Arguments:
+            brightness: The brightness value from ``0.0`` to ``1.0``
+        """
         if not self.running:
             return
         self.device.set_brightness(brightness)
@@ -87,8 +127,17 @@ class Indicator(Base):
 
 
 class Matrix(Base):
-    start_index: int
-    end_index: int
+    """Show the status of up to 5 tallies in a matrix
+
+    The tallies are shown in rows beginning with :attr:`start_index` and the
+    columns show the individual :class:`~tslumd.common.TallyType` values
+    ``('rh_tally', 'txt_tally', 'lh_tally')``
+
+    Arguments:
+        start_index: The value to set for :attr:`start_index`
+    """
+    start_index: int #: The tally index shown on the top row
+    end_index: int #: The tally index shown on the bottom row
     colors: Dict[Pixel, TallyColor]
     update_queue: asyncio.Queue
     def __init__(self, start_index: int):
