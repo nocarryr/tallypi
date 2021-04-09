@@ -7,10 +7,9 @@ Welcome to tallypi's documentation!
 ===================================
 
 .. toctree::
-   :maxdepth: 2
    :caption: Contents:
 
-   reference/index.rst
+   reference/index
 
 
 

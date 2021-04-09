@@ -11,6 +11,5 @@ Reference
     :noindex:
 
 .. toctree::
-    :maxdepth: 2
 
-    outputs/index.rst
+    outputs/index
