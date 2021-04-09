@@ -3,16 +3,18 @@ import argparse
 
 from tslumd import UmdReceiver, TallyType
 
+from tallypi.outputs import TallyConfig
 from tallypi.outputs.rgbmatrix5x5 import Indicator, Matrix
 
 
 async def run(tally_index: int, tally_type: TallyType, matrix_mode: bool = False):
     loop = asyncio.get_event_loop()
+    config = TallyConfig(tally_index=tally_index, tally_type=tally_type)
 
     if matrix_mode:
-        indicator = Matrix(tally_index)
+        indicator = Matrix(config)
     else:
-        indicator = Indicator(tally_index, tally_type)
+        indicator = Indicator(config)
 
     receiver = UmdReceiver()
     running = True

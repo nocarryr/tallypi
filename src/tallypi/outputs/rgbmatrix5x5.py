@@ -14,30 +14,27 @@ from typing import Dict, Tuple, Iterable, Optional, Any, ClassVar
 from rgbmatrix5x5 import RGBMatrix5x5
 from tslumd import TallyType, TallyColor, Tally
 
-Pixel = Tuple[int, int]
+from .common import TallyConfig, BaseOutput, Pixel, Rgb
 
-class Base:
+class Base(BaseOutput):
     """Base class for RGBMatrix5x5 displays
     """
-    color_map: ClassVar[Dict[TallyColor, Tuple]] = {
+    color_map: ClassVar[Dict[TallyColor, Rgb]] = {
         TallyColor.OFF: (0, 0, 0),
         TallyColor.RED: (255, 0, 0),
         TallyColor.GREEN: (0, 255, 0),
         TallyColor.AMBER: (255, 255, 0),
     }
-    """Mapping of :class:`tslumd.common.TallyColor` to tuples of ``(r, g, b)``
+    """Mapping of :class:`tslumd.common.TallyColor` to tuples of :data:`~.common.Rgb`
     """
 
     device: RGBMatrix5x5
     """The :class:`rgbmatrix5x5.RGBMatrix5x5` instance
     """
-    running: bool
-    """``True`` if the display is running
-    """
 
-    def __init__(self, *args):
+    def __init__(self, config: TallyConfig):
         self.device = None
-        self.running = False
+        super().__init__(config)
 
     async def open(self):
         """Create the :attr:`device` instance and initialize
@@ -61,29 +58,14 @@ class Base:
             self.device.show()
             self.device = None
 
-    async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
-        """Callback for tally updates from :class:`tslumd.receiver.UmdReceiver`
-        """
-        pass
-
-    async def __aenter__(self):
-        await self.open()
-        return self
-
-    async def __aexit__(self, *args):
-        await self.close()
 
 class Indicator(Base):
     """Show a solid color for a single :class:`~tslumd.tallyobj.Tally`
     """
-    tally_index: int #: The tally index
-    tally_type: TallyType #: The :class:`~tslumd.common.TallyType`
-    def __init__(self, tally_index: int, tally_type: TallyType):
-        self.tally_index = tally_index
-        self.tally_type = tally_type
+    def __init__(self, config: TallyConfig):
         self._color = None
         self._brightness = None
-        super().__init__()
+        super().__init__(config)
 
     async def set_color(self, color: TallyColor):
         """Set all pixels of the :attr:`device` to the given color
@@ -129,24 +111,24 @@ class Indicator(Base):
 class Matrix(Base):
     """Show the status of up to 5 tallies in a matrix
 
-    The tallies are shown in rows beginning with :attr:`start_index` and the
-    columns show the individual :class:`~tslumd.common.TallyType` values
+    The tallies are shown in rows beginning with
+    :attr:`~.common.BaseOutput.tally_index` and ending with :attr:`end_index`.
+    The columns show the individual :class:`~tslumd.common.TallyType` values
     ``('rh_tally', 'txt_tally', 'lh_tally')``
-
-    Arguments:
-        start_index: The value to set for :attr:`start_index`
     """
-    start_index: int #: The tally index shown on the top row
-    end_index: int #: The tally index shown on the bottom row
     colors: Dict[Pixel, TallyColor]
     update_queue: asyncio.Queue
-    def __init__(self, start_index: int):
-        self.start_index = start_index
-        self.end_index = start_index + 4
+    def __init__(self, config: TallyConfig):
+        super().__init__(config)
         self.colors = {(x,y):TallyColor.OFF for y in range(5) for x in range(5)}
         self.update_queue = asyncio.Queue()
         self._update_task = None
-        super().__init__()
+
+    @property
+    def end_index(self) -> int:
+        """The last tally index (derived from :attr:`~.common.BaseOutput.tally_index`)
+        """
+        return self.tally_index + 4
 
     async def open(self):
         if self.running:
@@ -171,8 +153,8 @@ class Matrix(Base):
     @logger.catch
     async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
         changed = set()
-        if self.start_index <= tally.index <= self.end_index:
-            y = tally.index - self.start_index
+        if self.tally_index <= tally.index <= self.end_index:
+            y = tally.index - self.tally_index
             for tally_type in TallyType:
                 if tally_type == TallyType.no_tally:
                     continue

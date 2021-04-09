@@ -8,7 +8,17 @@
     :members:
     :noindex:
 
-.. toctree::
-    :maxdepth: 2
 
+BaseOutput Class
+----------------
+
+.. autoclass:: tallypi.outputs.common.BaseOutput
+    :members:
+
+Modules
+-------
+
+.. toctree::
+
+    common
     rgbmatrix5x5
