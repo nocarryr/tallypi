@@ -21,4 +21,5 @@ Modules
 .. toctree::
 
     common
+    gpio
     rgbmatrix5x5
