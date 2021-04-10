@@ -3,7 +3,7 @@ import argparse
 
 from tslumd import UmdReceiver, TallyType
 
-from tallypi.outputs import TallyConfig
+from tallypi.common import TallyConfig
 from tallypi.outputs.rgbmatrix5x5 import Indicator, Matrix
 
 

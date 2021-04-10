@@ -14,7 +14,7 @@ from typing import Dict, Tuple, Iterable, Optional, Any, ClassVar
 from rgbmatrix5x5 import RGBMatrix5x5
 from tslumd import TallyType, TallyColor, Tally
 
-from .common import TallyConfig, BaseOutput, Pixel, Rgb
+from tallypi.common import TallyConfig, BaseOutput, Pixel, Rgb
 
 class Base(BaseOutput):
     """Base class for RGBMatrix5x5 displays
@@ -112,7 +112,7 @@ class Matrix(Base):
     """Show the status of up to 5 tallies in a matrix
 
     The tallies are shown in rows beginning with
-    :attr:`~.common.BaseOutput.tally_index` and ending with :attr:`end_index`.
+    :attr:`~tallypi.common.BaseIO.tally_index` and ending with :attr:`end_index`.
     The columns show the individual :class:`~tslumd.common.TallyType` values
     ``('rh_tally', 'txt_tally', 'lh_tally')``
     """
@@ -126,7 +126,7 @@ class Matrix(Base):
 
     @property
     def end_index(self) -> int:
-        """The last tally index (derived from :attr:`~.common.BaseOutput.tally_index`)
+        """The last tally index (derived from :attr:`~tallypi.common.BaseIO.tally_index`)
         """
         return self.tally_index + 4
 

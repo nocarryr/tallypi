@@ -40,8 +40,8 @@ class TallyConfig:
         return cls(**kw)
 
 
-class BaseOutput:
-    """Base class for tally outputs
+class BaseIO:
+    """Base class for tally inputs and outputs
 
     Arguments:
         config: The initial value for :attr:`config`
@@ -111,3 +111,11 @@ class BaseOutput:
 
     async def __aexit__(self, *args):
         await self.close()
+
+class BaseOutput(BaseIO):
+    """Base class for tally outputs
+
+    Arguments:
+        config: The initial value for :attr:`config`
+    """
+    pass

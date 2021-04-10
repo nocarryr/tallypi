@@ -12,4 +12,5 @@ Reference
 
 .. toctree::
 
+    common
     outputs/index

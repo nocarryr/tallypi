@@ -6,7 +6,7 @@ import colorzero
 
 from tslumd import TallyType, TallyColor, Tally
 
-from .common import TallyConfig, BaseOutput, Pixel, Rgb
+from tallypi.common import TallyConfig, BaseOutput, Pixel, Rgb
 
 class BaseLED(BaseOutput):
     """Base class for GPIO LEDs
