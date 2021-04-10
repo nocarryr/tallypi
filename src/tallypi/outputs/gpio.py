@@ -6,12 +6,16 @@ import colorzero
 
 from tslumd import TallyType, TallyColor, Tally
 
-from tallypi.common import TallyConfig, BaseOutput, Pixel, Rgb
+from tallypi.common import SingleTallyConfig, BaseOutput, Pixel, Rgb
 
 class BaseLED(BaseOutput):
     """Base class for GPIO LEDs
+
+    Arguments:
+        config(SingleTallyConfig): The initial value for
+            :attr:`~tallypi.common.BaseIO.config`
     """
-    def __init__(self, config: TallyConfig):
+    def __init__(self, config: SingleTallyConfig):
         super().__init__(config)
 
     async def open(self):
@@ -47,15 +51,23 @@ class BaseLED(BaseOutput):
 
 class SingleLED(BaseLED):
     """Base class for LEDs that use a single GPIO pin
+
+    Arguments:
+        config(SingleTallyConfig): The initial value for
+            :attr:`~tallypi.common.BaseIO.config`
     """
     pin: int #: The GPIO pin number for the LED
-    def __init__(self, config: TallyConfig, pin: int):
+    def __init__(self, config: SingleTallyConfig, pin: int):
         super().__init__(config)
         self.pin = pin
 
 
 class LED(SingleLED):
     """A single color, non-dimmed LED
+
+    Arguments:
+        config(SingleTallyConfig): The initial value for
+            :attr:`~tallypi.common.BaseIO.config`
     """
     def _create_led(self):
         return gpiozero.LED(self.pin)
@@ -70,6 +82,10 @@ class LED(SingleLED):
 
 class PWMLED(SingleLED):
     """A single color, dimmable (PWM) LED
+
+    Arguments:
+        config(SingleTallyConfig): The initial value for
+            :attr:`~tallypi.common.BaseIO.config`
     """
     def _create_led(self):
         return gpiozero.PWMLED(self.pin)
@@ -83,6 +99,10 @@ class PWMLED(SingleLED):
 
 class RGBLED(BaseLED):
     """A full color RGB LED using PWM dimming
+
+    Arguments:
+        config(SingleTallyConfig): The initial value for
+            :attr:`~tallypi.common.BaseIO.config`
     """
 
     pins: Tuple[int, int, int]
@@ -95,7 +115,7 @@ class RGBLED(BaseLED):
         TallyColor.AMBER: colorzero.Color('#ffbf00'),
     }
 
-    def __init__(self, config: TallyConfig, pins: Tuple[int, int, int]):
+    def __init__(self, config: SingleTallyConfig, pins: Tuple[int, int, int]):
         super().__init__(config)
         self.pins = pins
 

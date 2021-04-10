@@ -14,10 +14,14 @@ from typing import Dict, Tuple, Iterable, Optional, Any, ClassVar
 from rgbmatrix5x5 import RGBMatrix5x5
 from tslumd import TallyType, TallyColor, Tally
 
-from tallypi.common import TallyConfig, BaseOutput, Pixel, Rgb
+from tallypi.common import SingleTallyConfig, BaseOutput, Pixel, Rgb
 
 class Base(BaseOutput):
     """Base class for RGBMatrix5x5 displays
+
+    Arguments:
+        config(SingleTallyConfig): The initial value for
+            :attr:`~tallypi.common.BaseIO.config`
     """
     color_map: ClassVar[Dict[TallyColor, Rgb]] = {
         TallyColor.OFF: (0, 0, 0),
@@ -25,14 +29,15 @@ class Base(BaseOutput):
         TallyColor.GREEN: (0, 255, 0),
         TallyColor.AMBER: (255, 255, 0),
     }
-    """Mapping of :class:`tslumd.common.TallyColor` to tuples of :data:`~.common.Rgb`
+    """Mapping of :class:`tslumd.common.TallyColor` to tuples of
+    :data:`~tallypi.common.Rgb`
     """
 
     device: RGBMatrix5x5
     """The :class:`rgbmatrix5x5.RGBMatrix5x5` instance
     """
 
-    def __init__(self, config: TallyConfig):
+    def __init__(self, config: SingleTallyConfig):
         self.device = None
         super().__init__(config)
 
@@ -62,7 +67,7 @@ class Base(BaseOutput):
 class Indicator(Base):
     """Show a solid color for a single :class:`~tslumd.tallyobj.Tally`
     """
-    def __init__(self, config: TallyConfig):
+    def __init__(self, config: SingleTallyConfig):
         self._color = None
         self._brightness = None
         super().__init__(config)
@@ -118,7 +123,7 @@ class Matrix(Base):
     """
     colors: Dict[Pixel, TallyColor]
     update_queue: asyncio.Queue
-    def __init__(self, config: TallyConfig):
+    def __init__(self, config: SingleTallyConfig):
         super().__init__(config)
         self.colors = {(x,y):TallyColor.OFF for y in range(5) for x in range(5)}
         self.update_queue = asyncio.Queue()

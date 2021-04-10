@@ -62,7 +62,7 @@ extensions = [
     'sphinx.ext.todo',
     # 'propertyobj',
     # 'builtinproperty',
-    # 'eventobj',
+    'eventobj',
 ]
 
 autodoc_member_order = 'bysource'

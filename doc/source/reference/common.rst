@@ -8,25 +8,33 @@
     :no-members:
     :noindex:
 
-BaseIO Class
-------------
+IO Classes
+----------
 
 .. autoclass:: BaseIO
     :members:
 
-
-BaseOutput Class
-----------------
+.. autoclass:: BaseInput
+    :members:
 
 .. autoclass:: BaseOutput
     :members:
 
 
-TallyConfig Class
------------------
+TallyConfig Classes
+-------------------
 
 .. autoclass:: TallyConfig
     :members:
+
+
+.. autoclass:: SingleTallyConfig
+    :members:
+
+
+.. autoclass:: MultiTallyConfig
+    :members:
+
 
 Helper Types
 ------------
