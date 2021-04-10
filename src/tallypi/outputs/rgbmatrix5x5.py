@@ -27,7 +27,7 @@ class Base(BaseOutput):
         TallyColor.OFF: (0, 0, 0),
         TallyColor.RED: (255, 0, 0),
         TallyColor.GREEN: (0, 255, 0),
-        TallyColor.AMBER: (255, 255, 0),
+        TallyColor.AMBER: (0xff, 0xbf, 0),
     }
     """Mapping of :class:`tslumd.common.TallyColor` to tuples of
     :data:`~tallypi.common.Rgb`
