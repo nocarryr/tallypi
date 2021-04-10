@@ -13,4 +13,5 @@ Reference
 .. toctree::
 
     common
+    inputs/index
     outputs/index
