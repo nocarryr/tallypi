@@ -1,1 +1,5 @@
 -r doc/requirements.txt
+pytest
+pytest-asyncio
+pytest-cov
+Faker
