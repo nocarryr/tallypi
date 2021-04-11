@@ -43,7 +43,7 @@ class SingleTallyConfig(TallyConfig):
     """The :class:`~tslumd.common.TallyType`
     """
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
         d = super().to_dict()
         d['tally_type'] = d['tally_type'].name
         return d
@@ -79,16 +79,16 @@ class MultiTallyConfig(TallyConfig):
                 return True
         return False
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
         tallies = [c.to_dict() for c in self.tallies]
-        return {'tallies':tallies}
+        return {'tallies':tallies, 'allow_all':self.allow_all}
 
     @classmethod
     def from_dict(cls, d: Dict) -> 'MultiTallyConfig':
         kw = d.copy()
         tallies = kw['tallies']
         kw['tallies'] = [SingleTallyConfig.from_dict(td) for td in tallies]
-        return super().from_dict(**kw)
+        return super().from_dict(kw)
 
 
 
