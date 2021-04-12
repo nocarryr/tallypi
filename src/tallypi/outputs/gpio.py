@@ -14,9 +14,13 @@ class BaseLED(BaseOutput):
     Arguments:
         config(SingleTallyConfig): The initial value for
             :attr:`~tallypi.common.BaseIO.config`
+        active_high: Set to ``True`` (the default) for common cathode LEDs,
+            ``False`` for common anode LEDs
     """
-    def __init__(self, config: SingleTallyConfig):
+    active_high: bool
+    def __init__(self, config: SingleTallyConfig, active_high: bool = True):
         super().__init__(config)
+        self.active_high = active_high
 
     async def open(self):
         if self.running:
@@ -55,22 +59,20 @@ class SingleLED(BaseLED):
     Arguments:
         config(SingleTallyConfig): The initial value for
             :attr:`~tallypi.common.BaseIO.config`
+        active_high: Set to ``True`` (the default) for common cathode LEDs,
+            ``False`` for common anode LEDs
     """
     pin: int #: The GPIO pin number for the LED
-    def __init__(self, config: SingleTallyConfig, pin: int):
-        super().__init__(config)
+    def __init__(self, config: SingleTallyConfig, pin: int, active_high: bool = True):
+        super().__init__(config, active_high)
         self.pin = pin
 
 
 class LED(SingleLED):
     """A single color, non-dimmed LED
-
-    Arguments:
-        config(SingleTallyConfig): The initial value for
-            :attr:`~tallypi.common.BaseIO.config`
     """
     def _create_led(self):
-        return gpiozero.LED(self.pin)
+        return gpiozero.LED(self.pin, active_high=self.active_high)
 
     def set_led(self, color: TallyColor, brightness: float):
         state = color != TallyColor.OFF
@@ -86,9 +88,11 @@ class PWMLED(SingleLED):
     Arguments:
         config(SingleTallyConfig): The initial value for
             :attr:`~tallypi.common.BaseIO.config`
+        active_high: Set to ``True`` (the default) for common cathode LEDs,
+            ``False`` for common anode LEDs
     """
     def _create_led(self):
-        return gpiozero.PWMLED(self.pin)
+        return gpiozero.PWMLED(self.pin, active_high=self.active_high)
 
     def set_led(self, color: TallyColor, brightness: float):
         state = color != TallyColor.OFF
@@ -103,6 +107,8 @@ class RGBLED(BaseLED):
     Arguments:
         config(SingleTallyConfig): The initial value for
             :attr:`~tallypi.common.BaseIO.config`
+        active_high: Set to ``True`` (the default) for common cathode LEDs,
+            ``False`` for common anode LEDs
     """
 
     pins: Tuple[int, int, int]
@@ -115,12 +121,12 @@ class RGBLED(BaseLED):
         TallyColor.AMBER: colorzero.Color('#ffbf00'),
     }
 
-    def __init__(self, config: SingleTallyConfig, pins: Tuple[int, int, int]):
-        super().__init__(config)
+    def __init__(self, config: SingleTallyConfig, pins: Tuple[int, int, int], active_high: bool = True):
+        super().__init__(config, active_high)
         self.pins = pins
 
     def _create_led(self):
-        return gpiozero.RGBLED(*self.pins)
+        return gpiozero.RGBLED(*self.pins, active_high=self.active_high)
 
     def set_led(self, color: TallyColor, brightness: float):
         if color == TallyColor.OFF:
