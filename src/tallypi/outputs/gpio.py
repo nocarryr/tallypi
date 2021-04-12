@@ -14,7 +14,7 @@ class BaseLED(BaseOutput):
     Arguments:
         config(SingleTallyConfig): The initial value for
             :attr:`~tallypi.common.BaseIO.config`
-        active_high: Set to ``True`` (the default) for common cathode LEDs,
+        active_high(bool): Set to ``True`` (the default) for common cathode LEDs,
             ``False`` for common anode LEDs
     """
     active_high: bool
@@ -59,7 +59,8 @@ class SingleLED(BaseLED):
     Arguments:
         config(SingleTallyConfig): The initial value for
             :attr:`~tallypi.common.BaseIO.config`
-        active_high: Set to ``True`` (the default) for common cathode LEDs,
+        pin(int): The GPIO pin number for the LED
+        active_high(bool): Set to ``True`` (the default) for common cathode LEDs,
             ``False`` for common anode LEDs
     """
     pin: int #: The GPIO pin number for the LED
@@ -70,6 +71,13 @@ class SingleLED(BaseLED):
 
 class LED(SingleLED):
     """A single color, non-dimmed LED
+
+    Arguments:
+        config(SingleTallyConfig): The initial value for
+            :attr:`~tallypi.common.BaseIO.config`
+        pin (int): The GPIO pin number for the LED
+        active_high(bool): Set to ``True`` (the default) for common cathode LEDs,
+            ``False`` for common anode LEDs
     """
     def _create_led(self):
         return gpiozero.LED(self.pin, active_high=self.active_high)
@@ -88,7 +96,8 @@ class PWMLED(SingleLED):
     Arguments:
         config(SingleTallyConfig): The initial value for
             :attr:`~tallypi.common.BaseIO.config`
-        active_high: Set to ``True`` (the default) for common cathode LEDs,
+        pin (int): The GPIO pin number for the LED
+        active_high(bool): Set to ``True`` (the default) for common cathode LEDs,
             ``False`` for common anode LEDs
     """
     def _create_led(self):
@@ -107,7 +116,8 @@ class RGBLED(BaseLED):
     Arguments:
         config(SingleTallyConfig): The initial value for
             :attr:`~tallypi.common.BaseIO.config`
-        active_high: Set to ``True`` (the default) for common cathode LEDs,
+        pins: Initial value for :attr:`pins`
+        active_high(bool): Set to ``True`` (the default) for common cathode LEDs,
             ``False`` for common anode LEDs
     """
 
