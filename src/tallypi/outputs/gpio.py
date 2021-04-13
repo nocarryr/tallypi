@@ -50,7 +50,7 @@ class BaseLED(BaseOutput):
         if tally.index != self.tally_index:
             return
         color = getattr(tally, self.tally_type.name)
-        brightness = tally.brightness / 4
+        brightness = (tally.brightness + 1) / 4
         self.set_led(color, brightness)
 
 class SingleLED(BaseLED):

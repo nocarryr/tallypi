@@ -107,7 +107,7 @@ class Indicator(Base):
         color = getattr(tally, self.tally_type.name)
         if color != self._color:
             await self.set_color(color)
-        brightness = tally.brightness / 4
+        brightness = (tally.brightness + 1) / 4
         if brightness != self._brightness:
             await self.set_brightness(brightness)
 
