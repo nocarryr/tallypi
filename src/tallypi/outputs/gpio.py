@@ -143,4 +143,4 @@ class RGBLED(BaseLED):
             self.led.off()
         else:
             led_color = self.color_map[color] * colorzero.Lightness(brightness)
-            self.led.color = self.color_map[color]
+            self.led.color = led_color
