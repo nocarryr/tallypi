@@ -1,12 +1,19 @@
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Tuple
 import gpiozero
 import colorzero
 
 from tslumd import TallyType, TallyColor, Tally
 
-from tallypi.common import SingleTallyConfig, BaseInput, Pixel, Rgb
+from tallypi.common import (
+    SingleTallyOption, SingleTallyConfig, BaseInput, Pixel, Rgb,
+)
+from tallypi.config import Option
 
 __all__ = ('GpioInput',)
+
+PinOption = Option(
+    name='pin', type=int, required=True,
+)
 
 class GpioInput(BaseInput):
     """A single tally input using a GPIO pin on the RPi
@@ -23,6 +30,10 @@ class GpioInput(BaseInput):
         super().__init__(config)
         self.pin = pin
         self.tally = None
+
+    @classmethod
+    def get_init_options(cls) -> Tuple[Option]:
+        return (SingleTallyOption, PinOption)
 
     async def open(self):
         if self.running:

@@ -1,9 +1,10 @@
 import asyncio
-from typing import Optional
+from typing import Optional, Tuple
 
 from tslumd import UmdReceiver, TallyType, Tally
 
-from tallypi.common import BaseInput, MultiTallyConfig
+from tallypi.common import BaseInput, MultiTallyConfig, MultiTallyOption
+from tallypi.config import Option
 
 __all__ = ('UmdInput',)
 
@@ -26,6 +27,10 @@ class UmdInput(BaseInput):
             on_tally_added=self._on_receiver_tally_added,
             on_tally_updated=self._on_receiver_tally_updated
         )
+
+    @classmethod
+    def get_init_options(cls) -> Tuple[Option]:
+        return (MultiTallyOption,)
 
     async def open(self):
         if self.running:

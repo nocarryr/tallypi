@@ -14,7 +14,10 @@ from typing import Dict, Tuple, Iterable, Optional, Any, ClassVar
 from rgbmatrix5x5 import RGBMatrix5x5
 from tslumd import TallyType, TallyColor, Tally
 
-from tallypi.common import SingleTallyConfig, BaseOutput, Pixel, Rgb
+from tallypi.common import (
+    SingleTallyOption, SingleTallyConfig, BaseOutput, Pixel, Rgb,
+)
+from tallypi.config import Option
 
 class Base(BaseOutput):
     """Base class for RGBMatrix5x5 displays
@@ -40,6 +43,10 @@ class Base(BaseOutput):
     def __init__(self, config: SingleTallyConfig):
         self.device = None
         super().__init__(config)
+
+    @classmethod
+    def get_init_options(cls) -> Tuple[Option]:
+        return (SingleTallyOption,)
 
     async def open(self):
         """Create the :attr:`device` instance and initialize

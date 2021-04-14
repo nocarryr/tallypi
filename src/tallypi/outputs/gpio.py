@@ -6,7 +6,24 @@ import colorzero
 
 from tslumd import TallyType, TallyColor, Tally
 
-from tallypi.common import SingleTallyConfig, BaseOutput, Pixel, Rgb
+from tallypi.common import (
+    SingleTallyConfig, SingleTallyOption, BaseOutput, Pixel, Rgb,
+)
+from tallypi.config import Option, ListOption
+
+
+ActiveHighOption = Option(
+    name='active_high', type=bool, required=False, default=True,
+)
+BrightnessScaleOption = Option(
+    name='brightness_scale', type=float, required=False, default=1.0,
+)
+PinOption = Option(
+    name='pin', type=int, required=True,
+)
+RGBPinsOption = ListOption(
+    name='pins', type=int, required=True, min_length=3, max_length=3,
+)
 
 class BaseLED(BaseOutput):
     """Base class for GPIO LEDs
@@ -19,7 +36,12 @@ class BaseLED(BaseOutput):
         brightness_scale(float, optional): The value to set for
             :attr:`brightness_scale`. Default is 1.0
     """
+
     active_high: bool
+    """If ``True`` configure the GPIO pins as common cathode, ``False`` for
+    common anode
+    """
+
     brightness_scale: float
     """A multiplier (from 0.0 to 1.0) used to limit the maximum
         brightness (for PWM LEDs). A value of 1.0 produces the full range while
@@ -33,6 +55,10 @@ class BaseLED(BaseOutput):
         super().__init__(config)
         self.active_high = active_high
         self.brightness_scale = brightness_scale
+
+    @classmethod
+    def get_init_options(cls) -> Tuple[Option]:
+        return (SingleTallyOption, ActiveHighOption, BrightnessScaleOption)
 
     async def open(self):
         if self.running:
@@ -84,8 +110,15 @@ class SingleLED(BaseLED):
                  active_high: bool = True,
                  brightness_scale: float = 1.0):
 
-        super().__init__(config, active_high)
+        super().__init__(config, active_high, brightness_scale)
         self.pin = pin
+
+    @classmethod
+    def get_init_options(cls) -> Tuple[Option]:
+        return (
+            SingleTallyOption, PinOption,
+            ActiveHighOption, BrightnessScaleOption,
+        )
 
 
 class LED(SingleLED):
@@ -164,6 +197,13 @@ class RGBLED(BaseLED):
 
         super().__init__(config, active_high, brightness_scale)
         self.pins = pins
+
+    @classmethod
+    def get_init_options(cls) -> Tuple[Option]:
+        return (
+            SingleTallyOption, RGBPinsOption,
+            ActiveHighOption, BrightnessScaleOption,
+        )
 
     def _create_led(self):
         return gpiozero.RGBLED(*self.pins, active_high=self.active_high)

@@ -5,6 +5,8 @@ from typing import Dict, Tuple, List, Optional
 from pydispatch import Dispatcher
 from tslumd import Tally, TallyColor, TallyType
 
+from .config import Option, ListOption
+
 __all__ = (
     'Pixel', 'Rgb', 'BaseInput', 'BaseOutput',
     'TallyConfig', 'SingleTallyConfig', 'MultiTallyConfig',
@@ -43,6 +45,18 @@ class SingleTallyConfig(TallyConfig):
     """The :class:`~tslumd.common.TallyType`
     """
 
+    @classmethod
+    def get_init_options(cls) -> Tuple[Option]:
+        tt_choices = tuple((tt.name for tt in TallyType))
+        return (
+            Option(name='tally_index', type=int, required=True),
+            Option(
+                name='tally_type', type=str, required=True, choices=tt_choices,
+                serialize_cb=lambda x: x.name,
+                validate_cb=lambda x: getattr(TallyType, x)
+            ),
+        )
+
     def to_dict(self) -> Dict:
         d = super().to_dict()
         d['tally_type'] = d['tally_type'].name
@@ -68,6 +82,16 @@ class MultiTallyConfig(TallyConfig):
     """If ``True``, all possible tally configurations exist within this instance
     """
 
+    @classmethod
+    def get_init_options(cls) -> Tuple[Option]:
+        return (
+            ListOption(
+                name='tallies', type=SingleTallyConfig, required=False,
+                sub_options=SingleTallyConfig.get_init_options(),
+            ),
+            Option(name='allow_all', type=bool, required=False, default=False),
+        )
+
     def contains(self, tally_conf: SingleTallyConfig) -> bool:
         """Determine if the given :class:`config <SingleTallyConfig>` exists within
         :attr:`tallies`
@@ -90,7 +114,14 @@ class MultiTallyConfig(TallyConfig):
         kw['tallies'] = [SingleTallyConfig.from_dict(td) for td in tallies]
         return super().from_dict(kw)
 
-
+SingleTallyOption = Option(
+    name='config', type=SingleTallyConfig, required=True,
+    sub_options=SingleTallyConfig.get_init_options(),
+)
+MultiTallyOption = Option(
+    name='config', type=MultiTallyConfig, required=True,
+    sub_options=MultiTallyConfig.get_init_options(),
+)
 
 class BaseIO(Dispatcher):
     """Base class for tally inputs and outputs
@@ -109,6 +140,44 @@ class BaseIO(Dispatcher):
     def __init__(self, config: TallyConfig):
         self.config = config
         self.running = False
+
+    @classmethod
+    def get_init_options(cls) -> Tuple[Option]:
+        """Get the :class:`.config.Option` definitions required for this object
+        """
+        return (Option(name='config', type=TallyConfig, required=True),)
+
+    @classmethod
+    def create_from_options(cls, values: Dict) -> 'BaseIO':
+        """Create an instance using definitions from :meth:`get_init_options`
+        and the given values
+
+        Arguments:
+            values(dict): A dict of values formatted as the result from the
+                :meth:`serialize_options` method
+        """
+        kw = {}
+        for opt in cls.get_init_options():
+            if opt.name not in values:
+                continue
+            kw[opt.name] = opt.validate(values[opt.name])
+        return cls(**kw)
+
+    def serialize_options(self):
+        """Serialize the values defined in :meth:`get_init_options` using
+        the :attr:`.config.Option.name` as keys and :meth:`.config.Option.serialize`
+        as values.
+
+        This can then be used to create an instance using the
+        :meth:`create_from_options` method
+        """
+        d = {}
+        for opt in self.get_init_options():
+            value = getattr(self, opt.name)
+            if value is None:
+                continue
+            d[opt.name] = opt.serialize(value)
+        return d
 
     @property
     def tally_index(self) -> int:

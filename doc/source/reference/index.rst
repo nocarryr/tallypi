@@ -15,3 +15,4 @@ Reference
     common
     inputs/index
     outputs/index
+    config
