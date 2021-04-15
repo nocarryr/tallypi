@@ -140,7 +140,7 @@ class BaseIO(Dispatcher):
 
     __subclass_map: ClassVar[Dict[str, 'BaseIO']] = {}
 
-    def __init_subclass__(cls, /, namespace=None, final=False, **kwargs):
+    def __init_subclass__(cls, namespace=None, final=False, **kwargs):
         if namespace is None:
             return
         cls_namespace = None
