@@ -192,7 +192,24 @@ class BaseIO(Dispatcher):
             kw[opt.name] = opt.validate(values[opt.name])
         return cls(**kw)
 
-    def serialize_options(self):
+    # @final
+    @classmethod
+    def deserialize(cls, data: Dict) -> 'BaseIO':
+        """Deserialize an object using data from the :meth:`serialize` method
+        """
+        ns = data['namespace']
+        opt_vals = data['options']
+        subcls = cls.get_class_for_namespace(ns)
+        return subcls.create_from_options(opt_vals)
+
+    def serialize(self) -> Dict:
+        """Serialize the instance :meth:`values <serialize_options>` and the
+        class namespace
+        """
+        opt_vals = self.serialize_options()
+        return {'namespace':self.namespace, 'options':opt_vals}
+
+    def serialize_options(self) -> Dict:
         """Serialize the values defined in :meth:`get_init_options` using
         the :attr:`.config.Option.name` as keys and :meth:`.config.Option.serialize`
         as values.

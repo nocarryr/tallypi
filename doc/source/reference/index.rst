@@ -12,6 +12,7 @@ Reference
 
 .. toctree::
 
+    manager
     common
     inputs/index
     outputs/index
