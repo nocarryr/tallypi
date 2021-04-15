@@ -1,6 +1,6 @@
 import dataclasses
 from dataclasses import dataclass, field
-from typing import Dict, Tuple, List, Optional, ClassVar, final
+from typing import Dict, Tuple, List, Optional, ClassVar
 
 from pydispatch import Dispatcher
 from tslumd import Tally, TallyColor, TallyType
@@ -163,7 +163,7 @@ class BaseIO(Dispatcher):
         self.config = config
         self.running = False
 
-    @final
+    # @final
     @classmethod
     def get_class_for_namespace(cls, namespace: str) -> 'BaseIO':
         if cls is not BaseIO:
