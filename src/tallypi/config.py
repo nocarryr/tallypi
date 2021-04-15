@@ -1,6 +1,11 @@
-from typing import Tuple, List, Dict, Sequence, Optional, Any, Callable
+from pathlib import Path
+from typing import Tuple, List, Dict, Sequence, Optional, Any, Callable, Union, ClassVar
 import dataclasses
 from dataclasses import dataclass, field
+
+from ruamel.yaml import YAML
+
+yaml = YAML(typ='safe')
 
 _GET_INIT_OPTS = 'get_init_options'
 
@@ -157,3 +162,36 @@ class ListOption(Option):
         for item in value:
             result.append(super().serialize(item))
         return result
+
+class Config:
+    """Config data storage using YAML
+    """
+    DEFAULT_FILENAME: ClassVar[Path] = Path.home() / '.config' / 'tallypi.yaml'
+    """The default config filename
+    """
+
+    filename: Path
+    """Path to configuration file
+    """
+
+    def __init__(self, filename: Optional[Union[str, Path]] = DEFAULT_FILENAME):
+        if not isinstance(filename, Path):
+            filename = Path(filename)
+        self.filename = filename
+
+    def read(self) -> Dict:
+        """Read data from :attr:`filename` and return the result
+
+        If the file does not exist, an empty dictionary is returned
+        """
+        if not self.filename.exists():
+            return {}
+        data = yaml.load(self.filename)
+        return data
+
+    def write(self, data: Dict):
+        """Write the given :class:`dict` data to the config :attr:`filename`
+        """
+        if not self.filename.parent.exists():
+            self.filename.parent.mkdir(parents=True)
+        yaml.dump(data, self.filename)
