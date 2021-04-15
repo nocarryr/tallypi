@@ -19,7 +19,9 @@ from tallypi.common import (
 )
 from tallypi.config import Option
 
-class Base(BaseOutput):
+__all__ = ('Indicator', 'Matrix')
+
+class Base(BaseOutput, namespace='rgbmatrix5x5'):
     """Base class for RGBMatrix5x5 displays
 
     Arguments:
@@ -71,7 +73,7 @@ class Base(BaseOutput):
             self.device = None
 
 
-class Indicator(Base):
+class Indicator(Base, namespace='Indicator', final=True):
     """Show a solid color for a single :class:`~tslumd.tallyobj.Tally`
     """
     def __init__(self, config: SingleTallyConfig):
@@ -120,7 +122,7 @@ class Indicator(Base):
 
 
 
-class Matrix(Base):
+class Matrix(Base, namespace='Matrix', final=True):
     """Show the status of up to 5 tallies in a matrix
 
     The tallies are shown in rows beginning with

@@ -11,6 +11,8 @@ from tallypi.common import (
 )
 from tallypi.config import Option, ListOption
 
+__all__ = ('LED', 'PWMLED', 'RGBLED')
+
 
 ActiveHighOption = Option(
     name='active_high', type=bool, required=False, default=True,
@@ -25,7 +27,7 @@ RGBPinsOption = ListOption(
     name='pins', type=int, required=True, min_length=3, max_length=3,
 )
 
-class BaseLED(BaseOutput):
+class BaseLED(BaseOutput, namespace='gpio'):
     """Base class for GPIO LEDs
 
     Arguments:
@@ -121,7 +123,7 @@ class SingleLED(BaseLED):
         )
 
 
-class LED(SingleLED):
+class LED(SingleLED, namespace='LED', final=True):
     """A single color, non-dimmed LED
 
     Arguments:
@@ -144,7 +146,7 @@ class LED(SingleLED):
             self.led.off()
 
 
-class PWMLED(SingleLED):
+class PWMLED(SingleLED, namespace='PWMLED', final=True):
     """A single color, dimmable (PWM) LED
 
     Arguments:
@@ -166,7 +168,7 @@ class PWMLED(SingleLED):
         else:
             self.led.value = 0
 
-class RGBLED(BaseLED):
+class RGBLED(BaseLED, namespace='RGBLED', final=True):
     """A full color RGB LED using PWM dimming
 
     Arguments:

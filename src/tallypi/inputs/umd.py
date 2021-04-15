@@ -8,7 +8,7 @@ from tallypi.config import Option
 
 __all__ = ('UmdInput',)
 
-class UmdInput(BaseInput):
+class UmdInput(BaseInput, namespace='umd.UmdInput', final=True):
     """Networked tally input using the UMDv5 protocol
 
     Arguments:

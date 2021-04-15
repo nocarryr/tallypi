@@ -15,7 +15,7 @@ PinOption = Option(
     name='pin', type=int, required=True,
 )
 
-class GpioInput(BaseInput):
+class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
     """A single tally input using a GPIO pin on the RPi
 
     Arguments:

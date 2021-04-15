@@ -1,6 +1,6 @@
 import dataclasses
 from dataclasses import dataclass, field
-from typing import Dict, Tuple, List, Optional
+from typing import Dict, Tuple, List, Optional, ClassVar, final
 
 from pydispatch import Dispatcher
 from tslumd import Tally, TallyColor, TallyType
@@ -137,9 +137,38 @@ class BaseIO(Dispatcher):
     running: bool
     """``True`` if the display is running
     """
+
+    __subclass_map: ClassVar[Dict[str, 'BaseIO']] = {}
+
+    def __init_subclass__(cls, /, namespace=None, final=False, **kwargs):
+        if namespace is None:
+            return
+        cls_namespace = None
+        for basecls in cls.mro():
+            if basecls is cls:
+                continue
+            elif basecls is BaseIO:
+                break
+            if hasattr(basecls, 'namespace'):
+                cls_namespace = f'{basecls.namespace}.{namespace}'
+                break
+        if cls_namespace is None:
+            cls_namespace = namespace
+        cls.namespace = cls_namespace
+        if final:
+            assert cls_namespace not in BaseIO._BaseIO__subclass_map
+            BaseIO._BaseIO__subclass_map[cls_namespace] = cls
+
     def __init__(self, config: TallyConfig):
         self.config = config
         self.running = False
+
+    @final
+    @classmethod
+    def get_class_for_namespace(cls, namespace: str) -> 'BaseIO':
+        if cls is not BaseIO:
+            return BaseIO.get_class_for_namespace(namespace)
+        return cls.__subclass_map[namespace]
 
     @classmethod
     def get_init_options(cls) -> Tuple[Option]:
@@ -247,7 +276,7 @@ class BaseIO(Dispatcher):
     async def __aexit__(self, *args):
         await self.close()
 
-class BaseInput(BaseIO):
+class BaseInput(BaseIO, namespace='input'):
     """Base class for tally inputs
 
     Arguments:
@@ -297,7 +326,7 @@ class BaseInput(BaseIO):
         return False
 
 
-class BaseOutput(BaseIO):
+class BaseOutput(BaseIO, namespace='output'):
     """Base class for tally outputs
 
     Arguments:
