@@ -115,17 +115,14 @@ def add_led_output(ctx, pin, active_low, pwm, brightness):
     add_object_to_config(obj)
 
 @add_output.command('rgbled')
-@click.option('-r', '--red', 'red', required=True, type=int)
-@click.option('-g', '--green', 'green', required=True, type=int)
-@click.option('-b', '--blue', 'blue', required=True, type=int)
+@click.option('-p', '--pins', 'pins', nargs=3, type=int, required=True)
 @click.option('--active-low/--active-high', 'active_low', default=False)
 @click.option('--brightness', 'brightness', default=1.0, type=float)
 @click.pass_context
-def add_rgbled_output(ctx, red, green, blue, active_low, brightness):
+def add_rgbled_output(ctx, pins, active_low, brightness):
     ns = 'output.gpio.RGBLED'
     cls = BaseIO.get_class_for_namespace(ns)
     active_high = not active_low
-    pins = (red, green, blue)
     obj = cls(ctx.obj['tally_conf'], pins, active_high=active_high, brightness_scale=brightness)
     add_object_to_config(obj)
 
