@@ -27,6 +27,8 @@ class Base(BaseOutput, namespace='rgbmatrix5x5'):
     Arguments:
         config(SingleTallyConfig): The initial value for
             :attr:`~tallypi.common.BaseIO.config`
+        brightness_scale(float, optional): The value to set for
+            :attr:`brightness_scale`. Default is 1.0
     """
     color_map: ClassVar[Dict[TallyColor, Rgb]] = {
         TallyColor.OFF: (0, 0, 0),
@@ -38,17 +40,29 @@ class Base(BaseOutput, namespace='rgbmatrix5x5'):
     :data:`~tallypi.common.Rgb`
     """
 
+    brightness_scale: float
+    """A multiplier (from 0.0 to 1.0) used to limit the maximum
+        brightness. A value of 1.0 produces the full range while
+        0.5 scales to half brightness.
+    """
+
     device: RGBMatrix5x5
     """The :class:`rgbmatrix5x5.RGBMatrix5x5` instance
     """
 
-    def __init__(self, config: SingleTallyConfig):
+    def __init__(self, config: SingleTallyConfig, brightness_scale: Optional[float] = 1.0):
         self.device = None
+        self.brightness_scale = brightness_scale
         super().__init__(config)
 
     @classmethod
     def get_init_options(cls) -> Tuple[Option]:
-        return (SingleTallyOption,)
+        return (
+            SingleTallyOption,
+            Option(
+                name='brightness_scale', type=float, required=False, default=1.0,
+            ),
+        )
 
     async def open(self):
         """Create the :attr:`device` instance and initialize
@@ -76,10 +90,10 @@ class Base(BaseOutput, namespace='rgbmatrix5x5'):
 class Indicator(Base, namespace='Indicator', final=True):
     """Show a solid color for a single :class:`~tslumd.tallyobj.Tally`
     """
-    def __init__(self, config: SingleTallyConfig):
+    def __init__(self, config: SingleTallyConfig, brightness_scale: Optional[float] = 1.0):
         self._color = None
         self._brightness = None
-        super().__init__(config)
+        super().__init__(config, brightness_scale)
 
     async def set_color(self, color: TallyColor):
         """Set all pixels of the :attr:`device` to the given color
@@ -93,7 +107,10 @@ class Indicator(Base, namespace='Indicator', final=True):
             return
         rgb = self.color_map[color]
         self.device.set_all(*rgb)
-        self.device.show()
+        if self._brightness is None:
+            await self.set_brightness(1.0)
+        else:
+            self.device.show()
         self._color = color
 
     async def set_brightness(self, brightness: float):
@@ -104,7 +121,7 @@ class Indicator(Base, namespace='Indicator', final=True):
         """
         if not self.running:
             return
-        self.device.set_brightness(brightness)
+        self.device.set_brightness(brightness * self.brightness_scale)
         self.device.show()
         self._brightness = brightness
 
@@ -132,8 +149,8 @@ class Matrix(Base, namespace='Matrix', final=True):
     """
     colors: Dict[Pixel, TallyColor]
     update_queue: asyncio.Queue
-    def __init__(self, config: SingleTallyConfig):
-        super().__init__(config)
+    def __init__(self, config: SingleTallyConfig, brightness_scale: Optional[float] = 1.0):
+        super().__init__(config, brightness_scale)
         self.colors = {(x,y):TallyColor.OFF for y in range(5) for x in range(5)}
         self.update_queue = asyncio.Queue()
         self._update_task = None
@@ -150,6 +167,7 @@ class Matrix(Base, namespace='Matrix', final=True):
         await self.clear_queue()
         await self.queue_update(*self.keys())
         await super().open()
+        self.device.set_brightness(self.brightness_scale)
         self._update_task = asyncio.create_task(self.update_loop())
 
     async def close(self):

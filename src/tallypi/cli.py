@@ -89,13 +89,14 @@ def add_output(ctx, tally_index, tally_type):
 
 @add_output.command('rgbmatrix')
 @click.argument('display_type', type=click.Choice(['indicator', 'matrix']))
+@click.option('--brightness', 'brightness', default=1.0, type=float)
 @click.pass_context
-def add_rgbmatrix_output(ctx, display_type):
+def add_rgbmatrix_output(ctx, display_type, brightness):
     display_type = display_type.title()
     ns = f'output.rgbmatrix5x5.{display_type}'
     cls = BaseIO.get_class_for_namespace(ns)
     tally_conf = ctx.obj['tally_conf']
-    obj = cls(ctx.obj['tally_conf'])
+    obj = cls(ctx.obj['tally_conf'], brightness_scale=brightness)
     add_object_to_config(obj)
 
 @add_output.command('led')
