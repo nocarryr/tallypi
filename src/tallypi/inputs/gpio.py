@@ -12,7 +12,7 @@ from tallypi.config import Option
 __all__ = ('GpioInput',)
 
 PinOption = Option(
-    name='pin', type=int, required=True,
+    name='pin', type=int, required=True, title='Pin',
 )
 
 class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):

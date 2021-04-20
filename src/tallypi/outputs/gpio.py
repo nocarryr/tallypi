@@ -16,15 +16,17 @@ __all__ = ('LED', 'PWMLED', 'RGBLED')
 
 ActiveHighOption = Option(
     name='active_high', type=bool, required=False, default=True,
+    title='Active High',
 )
 BrightnessScaleOption = Option(
     name='brightness_scale', type=float, required=False, default=1.0,
+    title='Brightness Scale',
 )
 PinOption = Option(
-    name='pin', type=int, required=True,
+    name='pin', type=int, required=True, title='Pin',
 )
 RGBPinsOption = ListOption(
-    name='pins', type=int, required=True, min_length=3, max_length=3,
+    name='pins', type=int, required=True, min_length=3, max_length=3, title='Pins',
 )
 
 class BaseLED(BaseOutput, namespace='gpio'):

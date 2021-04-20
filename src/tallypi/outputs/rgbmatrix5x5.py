@@ -61,6 +61,7 @@ class Base(BaseOutput, namespace='rgbmatrix5x5'):
             SingleTallyOption,
             Option(
                 name='brightness_scale', type=float, required=False, default=1.0,
+                title='Brightness Scale',
             ),
         )
 

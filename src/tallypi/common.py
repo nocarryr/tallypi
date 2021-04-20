@@ -49,11 +49,12 @@ class SingleTallyConfig(TallyConfig):
     def get_init_options(cls) -> Tuple[Option]:
         tt_choices = tuple((tt.name for tt in TallyType))
         return (
-            Option(name='tally_index', type=int, required=True),
+            Option(name='tally_index', type=int, required=True, title='Index'),
             Option(
                 name='tally_type', type=str, required=True, choices=tt_choices,
                 serialize_cb=lambda x: x.name,
-                validate_cb=lambda x: getattr(TallyType, x)
+                validate_cb=lambda x: getattr(TallyType, x),
+                title='TallyType',
             ),
         )
 
@@ -88,8 +89,12 @@ class MultiTallyConfig(TallyConfig):
             ListOption(
                 name='tallies', type=SingleTallyConfig, required=False,
                 sub_options=SingleTallyConfig.get_init_options(),
+                title='Tallies',
             ),
-            Option(name='allow_all', type=bool, required=False, default=False),
+            Option(
+                name='allow_all', type=bool, required=False, default=False,
+                title='Allow All',
+            ),
         )
 
     def contains(self, tally_conf: SingleTallyConfig) -> bool:
@@ -117,10 +122,12 @@ class MultiTallyConfig(TallyConfig):
 SingleTallyOption = Option(
     name='config', type=SingleTallyConfig, required=True,
     sub_options=SingleTallyConfig.get_init_options(),
+    title='Tally Config',
 )
 MultiTallyOption = Option(
     name='config', type=MultiTallyConfig, required=True,
     sub_options=MultiTallyConfig.get_init_options(),
+    title='Multi Tally Config',
 )
 
 class BaseIO(Dispatcher):

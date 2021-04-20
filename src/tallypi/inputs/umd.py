@@ -42,11 +42,11 @@ class UmdInput(BaseInput, namespace='umd.UmdInput', final=True):
             MultiTallyOption,
             Option(
                 name='hostaddr', type=str, required=False,
-                default=UmdReceiver.DEFAULT_HOST,
+                default=UmdReceiver.DEFAULT_HOST, title='Listen Address',
             ),
             Option(
                 name='hostport', type=int, required=False,
-                default=UmdReceiver.DEFAULT_PORT,
+                default=UmdReceiver.DEFAULT_PORT, title='Listen Port',
             ),
         )
 

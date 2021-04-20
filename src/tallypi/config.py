@@ -38,6 +38,9 @@ class Option:
     """
     name: str #: The parameter name
     type: Any #: The python value type
+    title: Optional[str] = None
+    """Friendly name for the option. If not given, :attr:`name` is used"""
+
     required: bool = True #: If ``True`` (default), the parameter is required
     default: Optional[Any] = None #: The default value for the parameter
     choices: Optional[Tuple[Any]] = field(default_factory=tuple)
@@ -59,6 +62,10 @@ class Option:
 
     The callback must accept a single argument, the value to be serialized
     """
+
+    def __post_init__(self):
+        if self.title is None:
+            self.title = self.name
 
     def validate(self, value: Any) -> Any:
         """Validate and transform the given value to the defined :attr:`type`
