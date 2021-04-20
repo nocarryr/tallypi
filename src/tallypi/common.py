@@ -45,6 +45,10 @@ class SingleTallyConfig(TallyConfig):
     """The :class:`~tslumd.common.TallyType`
     """
 
+    name: Optional[str] = ''
+    """User-defined name for the tally
+    """
+
     @classmethod
     def get_init_options(cls) -> Tuple[Option]:
         tt_choices = tuple((tt.name for tt in TallyType))
@@ -56,6 +60,7 @@ class SingleTallyConfig(TallyConfig):
                 validate_cb=lambda x: getattr(TallyType, x),
                 title='TallyType',
             ),
+            Option(name='name', type=str, required=False, default='', title='Name'),
         )
 
     def to_dict(self) -> Dict:
@@ -83,6 +88,10 @@ class MultiTallyConfig(TallyConfig):
     """If ``True``, all possible tally configurations exist within this instance
     """
 
+    name: Optional[str] = ''
+    """User-defined name for the tally config
+    """
+
     @classmethod
     def get_init_options(cls) -> Tuple[Option]:
         return (
@@ -95,6 +104,7 @@ class MultiTallyConfig(TallyConfig):
                 name='allow_all', type=bool, required=False, default=False,
                 title='Allow All',
             ),
+            Option(name='name', type=str, required=False, default='', title='Name'),
         )
 
     def contains(self, tally_conf: SingleTallyConfig) -> bool:
