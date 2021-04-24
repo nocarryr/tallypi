@@ -211,7 +211,21 @@ class Manager:
     config: Config #: Configuration storage
     running: bool
     config_read: bool
-    def __init__(self, config_filename: Optional[Path] = Config.DEFAULT_FILENAME):
+    readonly_override: 'ReadonlyOverride'
+    """A context manager that can temporarily disable :attr:`readonly` mode
+
+    For details, see the :class:`ReadonlyOverride` class
+    """
+    config_write_evt: asyncio.Event
+    """An :class:`asyncio.events.Event` that is set when config changes are
+    written
+    """
+    _events_ = ['config_written']
+    def __init__(self,
+                 config_filename: Optional[Path] = Config.DEFAULT_FILENAME,
+                 readonly: Optional[bool] = False):
+
+        self.__readonly = readonly
         self.loop = asyncio.get_event_loop()
         self.inputs = Inputs()
         self.outputs = Outputs()
@@ -221,6 +235,29 @@ class Manager:
         self.config = Config(filename=config_filename)
         self.running = False
         self.config_read = False
+        self.config_write_evt = asyncio.Event()
+        self.readonly_override = ReadonlyOverride(self.config_write_evt)
+
+    @property
+    def readonly(self) -> bool:
+        """If ``True`` config changes are not written to disk (unless overridden)
+
+        This is the immutable "readonly" state
+        """
+        return self.__readonly
+
+    @property
+    def _readonly(self) -> bool:
+        """``True`` if :attr:`readonly` is ``True`` and :attr:`readonly_override`
+        is ``False``
+
+        (if "readonly" and not overridden)
+        """
+        if not self.__readonly:
+            return False
+        if self.readonly_override:
+            return False
+        return True
 
     async def open(self):
         """Opens all inputs and outputs
@@ -281,17 +318,24 @@ class Manager:
         )
 
     async def on_io_update(self, *args, **kwargs):
+        async with self.readonly_override.state_lock:
+            if self._readonly:
+                return
         await self.write_config()
 
     async def write_config(self):
         """Write the current configuration to :attr:`config` using
         :meth:`~IOContainer.serialize` on :attr:`inputs` and :attr:`outputs`
         """
-        data = {
-            'inputs':self.inputs.serialize(),
-            'outputs':self.outputs.serialize(),
-        }
-        self.config.write(data)
+        async with self.readonly_override.state_lock:
+            if self._readonly:
+                return
+            data = {
+                'inputs':self.inputs.serialize(),
+                'outputs':self.outputs.serialize(),
+            }
+            self.config.write(data)
+            self.config_write_evt.set()
 
     async def __aenter__(self):
         await self.open()
@@ -299,6 +343,74 @@ class Manager:
 
     async def __aexit__(self, *args):
         await self.close()
+
+class ReadonlyOverride:
+    """An :term:`asynchronous context manager` used to override
+    the :attr:`~Manager.readonly` mode of :class:`Manager`
+
+    While the context is acquired, the :class:`Manager` is temporarily allowed
+    to write config changes. The :attr:`config_write_evt` event is returned
+    so it will be available as the *as* clause of the :keyword:`async with`
+    statement::
+
+        async with manager.readonly_override as config_write_evt:
+            await manager.remove_input('foo')
+            await config_write_evt.wait()
+
+    This allows code to :keyword:`await` for config changes to be written before
+    exiting the :keyword:`async with` context.
+    """
+
+    config_write_evt: asyncio.Event
+    """Alias for :attr:`Manager.config_write_evt`
+    """
+
+    override: bool
+    """``True`` if currently being overridden
+    """
+
+    state_lock: asyncio.Lock
+    """A lock used while changing states
+
+    (during :meth:`acquire` and :meth:`release` stages)
+    """
+    def __init__(self, config_write_evt: asyncio.Event):
+        self.config_write_evt = config_write_evt
+        self.override = False
+        self._lock = asyncio.Lock()
+        self.state_lock = asyncio.Lock()
+
+    def locked(self):
+        """``True`` if the context is acquired or if :attr:`state_lock` is locked
+        """
+        return self._lock.locked() or self.state_lock.locked()
+
+    def __bool__(self):
+        return self.override
+
+    async def acquire(self):
+        """Acquire the context and set :attr:`override` to ``True``
+
+        Also clears :attr:`config_write_evt` so it can be *awaited*
+        """
+        async with self.state_lock:
+            await self._lock.acquire()
+            self.config_write_evt.clear()
+            self.override = True
+
+    async def release(self):
+        """Set :attr:`override` to ``False`` and exit the context
+        """
+        async with self.state_lock:
+            self.override = False
+            self._lock.release()
+
+    async def __aenter__(self):
+        await self.acquire()
+        return self.config_write_evt
+
+    async def __aexit__(self, *args):
+        await self.release()
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
