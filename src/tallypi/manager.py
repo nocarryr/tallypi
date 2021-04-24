@@ -79,6 +79,15 @@ class IOContainer(Dispatcher):
         self.emit('object_added', key, obj)
         self.emit('update')
 
+    async def replace(self, key: str, obj: BaseIO):
+        """Replace an instance by the given key
+        """
+        old = self.objects[key]
+        await old.close()
+        del self.objects[key]
+        self.emit('object_removed', key, old)
+        await self.add(obj, key)
+
     async def remove(self, key: str):
         """Remove an instance by the given key
         """
