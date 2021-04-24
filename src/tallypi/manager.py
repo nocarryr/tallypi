@@ -9,6 +9,8 @@ from pydispatch import Dispatcher
 from tallypi.common import BaseIO, BaseInput, BaseOutput
 from tallypi.config import Config
 
+__all__ = ('Manager',)
+
 class IOContainer(Dispatcher):
     """Container for :class:`~.common.BaseIO` instances
 
