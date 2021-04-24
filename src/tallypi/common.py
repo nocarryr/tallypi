@@ -1,6 +1,6 @@
 import dataclasses
 from dataclasses import dataclass, field
-from typing import Dict, Tuple, List, Optional, ClassVar
+from typing import Dict, Tuple, List, Optional, ClassVar, Iterable
 
 from pydispatch import Dispatcher
 from tslumd import Tally, TallyColor, TallyType
@@ -155,6 +155,39 @@ class BaseIO(Dispatcher):
     """``True`` if the display is running
     """
 
+    namespace: ClassVar[str]
+    """Dotted name given to subclasses to uniquely identify them
+
+    :class:`BaseInput` and :class:`BaseOutput` have the root namespaces "input"
+    and "output" (respectively).
+
+    Subclasses that are meant to be used as inputs or outputs should indicate
+    this by adding a ``final=True`` keyword argument to the class definition.
+
+    This tells :class:`BaseIO` to track the subclass and makes it available in
+    :meth:`get_class_for_namespace` and :meth:`get_all_namespaces`.
+
+
+    This is a class attribute and is generated using keyword arguments in the
+    subclass definition::
+
+        >>> from tallypi.common import BaseInput
+
+        >>> class AwesomeInputBase(BaseInput, namespace='awesome'):
+        >>>     pass
+
+        >>> class AwesomeTCPInput(AwesomeInputBase, namespace='tcp', final=True):
+        >>>     pass
+
+        >>> print(AwesomeInputBase.namespace)
+        'input.awesome'
+        >>> print(AwesomeTCPInput.namespace)
+        'input.awesome.tcp'
+        >>> print(repr(BaseInput.get_class_for_namespace('input.awesome.tcp')))
+        <class '__main__.AwesomeTCPInput'>
+
+    """
+
     __subclass_map: ClassVar[Dict[str, 'BaseIO']] = {}
 
     def __init_subclass__(cls, namespace=None, final=False, **kwargs):
@@ -183,9 +216,21 @@ class BaseIO(Dispatcher):
     # @final
     @classmethod
     def get_class_for_namespace(cls, namespace: str) -> 'BaseIO':
+        """Get the :class:`BaseIO` subclass matching the given :attr:`namespace`
+        """
         if cls is not BaseIO:
             return BaseIO.get_class_for_namespace(namespace)
         return cls.__subclass_map[namespace]
+
+    @classmethod
+    def get_all_namespaces(cls, prefix: Optional[str] = '') -> Iterable[str]:
+        """Get all currently available :attr:`namespaces <namespace>`
+        """
+        if cls is not BaseIO:
+            return BaseIO.get_all_namespaces(namespace)
+        for ns in sorted(cls.__subclass_map.keys()):
+            if ns.startswith(prefix):
+                yield ns
 
     @classmethod
     def get_init_options(cls) -> Tuple[Option]:
