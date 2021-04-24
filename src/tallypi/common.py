@@ -381,6 +381,12 @@ class BaseInput(BaseIO, namespace='input'):
         """
         raise NotImplementedError
 
+    def get_all_tallies(self) -> Iterable[Tally]:
+        """Get all available :class:`~tslumd.tallyobj.Tally` instances for the
+        input
+        """
+        raise NotImplementedError
+
     def get_tally_color(self, tally_conf: SingleTallyConfig) -> Optional[TallyColor]:
         """Get the current :class:`~tslumd.common.TallyColor` for the given
         :class:`config specifier <SingleTallyConfig>`

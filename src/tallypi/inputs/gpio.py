@@ -59,6 +59,9 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
         if self.running and index_ == self.tally_index:
             return self.tally
 
+    def get_all_tallies(self) -> Iterable[Tally]:
+        return (self.tally,)
+
     def _set_tally_state(self, state: bool):
         attr = self.tally_type.name
         color = {True: TallyColor.RED, False: TallyColor.OFF}[state]

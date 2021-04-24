@@ -1,5 +1,5 @@
 import asyncio
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Iterable
 
 from tslumd import UmdReceiver, TallyType, Tally
 
@@ -85,6 +85,9 @@ class UmdInput(BaseInput, namespace='umd.UmdInput', final=True):
 
     def get_tally(self, index_: int) -> Optional[Tally]:
         return self.receiver.tallies.get(index_)
+
+    def get_all_tallies(self) -> Iterable[Tally]:
+        return self.receiver.tallies.values()
 
     def _on_receiver_tally_added(self, tally, **kwargs):
         self.emit('on_tally_added', tally)
