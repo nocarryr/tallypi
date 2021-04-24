@@ -103,4 +103,5 @@ intersphinx_mapping = {
     'python':('https://docs.python.org/', None),
     'pydispatch': ('https://python-dispatch.readthedocs.io/en/latest/', None),
     'tslumd':('https://tslumd.readthedocs.io/en/latest/', None),
+    'prompt_toolkit':('https://python-prompt-toolkit.readthedocs.io/en/master/', None),
 }
