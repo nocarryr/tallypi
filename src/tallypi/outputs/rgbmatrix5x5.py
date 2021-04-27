@@ -129,7 +129,7 @@ class Indicator(Base, namespace='Indicator', final=True):
     async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
         if not self.running:
             return
-        if tally.index != self.tally_index:
+        if not self.tally_matches(tally):
             return
         color = getattr(tally, self.tally_type.name)
         if color != self._color:
@@ -157,10 +157,20 @@ class Matrix(Base, namespace='Matrix', final=True):
         self._update_task = None
 
     @property
-    def end_index(self) -> int:
-        """The last tally index (derived from :attr:`~tallypi.common.BaseIO.tally_index`)
+    def start_index(self) -> int:
+        """The first tally index (the :attr:`~tallypi.common.SingleTallyConfig.tally_index`
+        of the :attr:`~tallypi.common.BaseIO.config`)
         """
-        return self.tally_index + 4
+        ix = self.config.tally_index
+        if ix is None:
+            ix = 0
+        return ix
+
+    @property
+    def end_index(self) -> int:
+        """The last tally index (derived from :attr:`start_index`)
+        """
+        return self.start_index + 4
 
     async def open(self):
         if self.running:
@@ -183,10 +193,17 @@ class Matrix(Base, namespace='Matrix', final=True):
             await t
             await self.clear_queue()
 
+    def tally_matches(self, tally: Tally) -> bool:
+        if not self.config.matches_screen(tally):
+            return False
+        if tally.is_broadcast:
+            return False
+        return self.start_index <= tally.index <= self.end_index
+
     @logger.catch
     async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
         changed = set()
-        if self.tally_index <= tally.index <= self.end_index:
+        if self.tally_matches(tally):
             y = tally.index - self.tally_index
             for tally_type in TallyType:
                 if tally_type == TallyType.no_tally:

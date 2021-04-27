@@ -89,7 +89,7 @@ class BaseLED(BaseOutput, namespace='gpio'):
     async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
         if not self.running:
             return
-        if tally.index != self.tally_index:
+        if not self.tally_matches(tally):
             return
         color = getattr(tally, self.tally_type.name)
         brightness = tally.normalized_brightness

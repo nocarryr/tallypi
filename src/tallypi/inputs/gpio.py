@@ -2,7 +2,7 @@ from typing import Optional, Iterable, Tuple
 import gpiozero
 import colorzero
 
-from tslumd import TallyType, TallyColor, Tally
+from tslumd import TallyType, TallyColor, Screen, Tally, TallyKey
 
 from tallypi.common import (
     SingleTallyOption, SingleTallyConfig, BaseInput, Pixel, Rgb,
@@ -24,11 +24,13 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
         pin: Initial value for :attr:`pin`
     """
     pin: int #: The GPIO input pin number
+    screen: Screen #: A :class:`tslumd.tallyobj.Screen` instance for the input
     tally: Tally #: A :class:`tslumd.tallyobj.Tally` instance for the input
 
     def __init__(self, config: SingleTallyConfig, pin: int):
         super().__init__(config)
         self.pin = pin
+        self.screen = None
         self.tally = None
 
     @classmethod
@@ -39,6 +41,7 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
         if self.running:
             return
         self.running = True
+        self.screen, self.tally = self.config.create_tally()
         self.tally = Tally(self.tally_index)
         self.tally.bind(on_update=self._on_tallyobj_update)
         self.emit('on_tally_added', self.tally)
@@ -53,10 +56,11 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
             return
         self.running = False
         self.tally.unbind(self)
+        self.screen = None
         self.tally = None
 
-    def get_tally(self, index_: int) -> Optional[Tally]:
-        if self.running and index_ == self.tally_index:
+    def get_tally(self, tally_key: TallyKey) -> Optional[Tally]:
+        if self.running and tally_key == self.tally.id:
             return self.tally
 
     def get_all_tallies(self) -> Iterable[Tally]:
