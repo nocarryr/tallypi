@@ -1,3 +1,4 @@
+import asyncio
 import dataclasses
 from dataclasses import dataclass, field
 from typing import Dict, Tuple, List, Optional, ClassVar, Iterable, Union
@@ -553,7 +554,7 @@ class BaseIO(Dispatcher):
         return self.config.matches(tally)
 
     async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
-        """Callback for tally updates from :class:`tslumd.receiver.UmdReceiver`
+        """Callback for tally updates from :class:`tslumd.tallyobj.Tally`
         """
         pass
 
@@ -620,4 +621,36 @@ class BaseOutput(BaseIO, namespace='output'):
     Arguments:
         config: The initial value for :attr:`~BaseIO.config`
     """
-    pass
+    async def bind_to_input(self, inp: BaseInput):
+        """Check for and set up listeners for matching tallies in the
+        :class:`input <BaseInput>`
+
+        Searches for any matching tallies in the input and calls
+        :meth:`bind_to_tally` for them.
+        Also binds to the :event:`BaseInput.on_tally_added` event to listen
+        for new tallies from the input
+        """
+        loop = asyncio.get_event_loop()
+        coros = set()
+        for tally in inp.get_all_tallies():
+            if not self.tally_matches(tally):
+                continue
+            coros.add(self.bind_to_tally(tally))
+        inp.bind_async(loop, on_tally_added=self.on_tally_added)
+        if len(coros):
+            await asyncio.gather(*coros)
+
+    async def on_tally_added(self, tally: Tally, **kwargs):
+        if self.tally_matches(tally):
+            await self.bind_to_tally(tally)
+
+    async def bind_to_tally(self, tally: Tally):
+        """Update current state and subscribe to changes from the given
+        :class:`~tslumd.tallyobj.Tally`
+
+        Calls :meth:`~BaseIO.on_receiver_tally_change` and binds tally update
+        events to it
+        """
+        loop = asyncio.get_event_loop()
+        tally.bind_async(loop, on_update=self.on_receiver_tally_change)
+        await self.on_receiver_tally_change(tally)
