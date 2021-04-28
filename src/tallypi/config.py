@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 
 from ruamel.yaml import YAML
 
-yaml = YAML(typ='safe')
 
 _GET_INIT_OPTS = 'get_init_options'
 
@@ -193,12 +192,14 @@ class Config:
         """
         if not self.filename.exists():
             return {}
+        yaml = YAML(typ='safe')
         data = yaml.load(self.filename)
         return data
 
     def write(self, data: Dict):
         """Write the given :class:`dict` data to the config :attr:`filename`
         """
+        yaml = YAML()
         if not self.filename.parent.exists():
             self.filename.parent.mkdir(parents=True)
         yaml.dump(data, self.filename)
