@@ -14,7 +14,6 @@ async def test_mocked_rgb5x5(fake_rgb5x5, faker):
 
     colors = {(x,y):(0,0,0) for y in range(5) for x in range(5)}
     async with indicator:
-        assert indicator.device.__class__ is fake_rgb5x5
         assert indicator.device.pixels == colors
         for _ in range(100):
 
@@ -57,4 +56,4 @@ async def test_indicator(fake_rgb5x5, faker):
             tally.brightness = i
             await indicator.on_receiver_tally_change(tally)
             assert all([c == rgb for c in device.pixels.values()])
-            assert device.brightness == i / 4
+            assert device.brightness == tally.normalized_brightness

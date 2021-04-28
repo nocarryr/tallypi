@@ -11,7 +11,7 @@ communication
 from loguru import logger
 import asyncio
 from typing import Dict, Tuple, Iterable, Optional, Any, ClassVar
-from rgbmatrix5x5 import RGBMatrix5x5
+import rgbmatrix5x5
 from tslumd import TallyType, TallyColor, Tally
 
 from tallypi.common import (
@@ -46,7 +46,7 @@ class Base(BaseOutput, namespace='rgbmatrix5x5'):
         0.5 scales to half brightness.
     """
 
-    device: RGBMatrix5x5
+    device: 'rgbmatrix5x5.RGBMatrix5x5'
     """The :class:`rgbmatrix5x5.RGBMatrix5x5` instance
     """
 
@@ -71,7 +71,7 @@ class Base(BaseOutput, namespace='rgbmatrix5x5'):
         if self.running:
             return
         if self.device is None:
-            self.device = RGBMatrix5x5()
+            self.device = rgbmatrix5x5.RGBMatrix5x5()
             # self.device.set_clear_on_exit()
             # self.device.set_brightness(0.8)
         self.running = True
