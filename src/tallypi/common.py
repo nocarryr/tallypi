@@ -28,6 +28,10 @@ def normalize_screen(obj: Union[TallyOrMultiTallyConfig, int]) -> Union[None, in
         screen = obj.screen.index
         if obj.screen.is_broadcast:
             screen = None
+    elif isinstance(obj, Screen):
+        screen = obj.index
+        if obj.is_broadcast:
+            screen = None
     else:
         screen = obj.screen_index
         if obj.is_broadcast_screen:
@@ -326,7 +330,7 @@ class MultiTallyConfig(TallyConfig):
         if self.allow_all:
             return self.matches_screen(tally)
         for t in self.tallies:
-            if tally_conf.matches(t):
+            if t.matches(tally):
                 return True
         return False
 
