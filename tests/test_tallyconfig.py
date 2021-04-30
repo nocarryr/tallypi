@@ -7,7 +7,11 @@ def test_single_tally_matching():
         all_screens = SingleTallyConfig(
             screen_index=None, tally_index=i, tally_type=tally_type,
         )
+        assert all_screens.matches_screen(0xffff)
+
         for j in range(10):
+            assert all_screens.matches_screen(j)
+
             tconf0 = SingleTallyConfig(
                 screen_index=j, tally_index=i, tally_type=tally_type,
             )
@@ -20,6 +24,7 @@ def test_single_tally_matching():
             tconfs = [tconf0, tconf1, tconf2]
 
             for tconf in tconfs:
+                assert tconf.matches_screen(0xffff)
                 assert tconf.matches_screen(all_screens)
                 assert all_screens.matches_screen(tconf)
                 if tconf.tally_index == i:
@@ -28,7 +33,9 @@ def test_single_tally_matching():
                     assert not tconf.matches(all_screens)
 
             assert tconf0.matches_screen(tconf1)
+            assert tconf0.matches_screen(j)
             assert not tconf0.matches_screen(tconf2)
+            assert not tconf0.matches_screen(j+1)
             assert not tconf0.matches(tconf1)
             assert not tconf0.matches(tconf2)
 
@@ -49,6 +56,15 @@ def test_multi_tally_matching():
             screen_index=None, allow_all=True,
         )
 
+        assert tconf_broadcast.matches_screen(0xffff)
+        assert tconf_broadcast.matches_screen(i)
+        assert tconf_single_scr.matches_screen(i)
+
+        assert allow_all_bc_scr.matches_screen(0xffff)
+        assert allow_all_bc_scr.matches_screen(i)
+        assert allow_all_single_scr.matches_screen(i)
+        assert allow_all_single_scr.matches_screen(0xffff)
+
         assert allow_all_bc_scr.matches(tconf_broadcast)
         assert allow_all_bc_scr.matches(tconf_single_scr)
         assert allow_all_single_scr.matches(tconf_broadcast)
@@ -67,6 +83,10 @@ def test_multi_tally_matching():
             mconf1 = MultiTallyConfig(
                 screen_index=j+1, allow_all=True
             )
+
+            assert mconf0.matches_screen(0xffff)
+            assert mconf0.matches_screen(j)
+            assert not mconf0.matches_screen(j+1)
 
             assert mconf0.matches(tconf0)
             assert not mconf0.matches(tconf1)

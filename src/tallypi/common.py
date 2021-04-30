@@ -16,8 +16,15 @@ __all__ = (
 Pixel = Tuple[int, int] #: A tuple of ``(x, y)`` coordinates
 Rgb = Tuple[int, int, int] #: A color tuple of ``(r, g, b)``
 
-def normalize_screen(obj: Union[Tally, 'SingleTallyConfig', 'MultiTallyConfig']) -> Union[None, int]:
-    if isinstance(obj, Tally):
+TallyOrTallyConfig = Union[Tally, 'SingleTallyConfig']
+TallyOrMultiTallyConfig = Union[TallyOrTallyConfig, 'MultiTallyConfig']
+
+def normalize_screen(obj: Union[TallyOrMultiTallyConfig, int]) -> Union[None, int]:
+    if isinstance(obj, int):
+        screen = obj
+        if obj == 0xffff:
+            screen = None
+    elif isinstance(obj, Tally):
         screen = obj.screen.index
         if obj.screen.is_broadcast:
             screen = None
@@ -27,8 +34,12 @@ def normalize_screen(obj: Union[Tally, 'SingleTallyConfig', 'MultiTallyConfig'])
             screen = None
     return screen
 
-def normalize_tally_index(obj: Union[Tally, 'SingleTallyConfig']) -> Union[None, int]:
-    if isinstance(obj, Tally):
+def normalize_tally_index(obj: Union[TallyOrTallyConfig, int]) -> Union[None, int]:
+    if isinstance(obj, int):
+        ix = obj
+        if obj == 0xffff:
+            ix = None
+    elif isinstance(obj, Tally):
         ix = obj.index
         if obj.is_broadcast:
             ix = None
@@ -128,7 +139,7 @@ class SingleTallyConfig(TallyConfig):
             Option(name='name', type=str, required=False, default='', title='Name'),
         )
 
-    def matches(self, other: Union['SingleTallyConfig', Tally]) -> bool:
+    def matches(self, other: TallyOrTallyConfig) -> bool:
         """Determine whether the given tally argument matches this one
 
         For :attr:`screen_index` the :meth:`matches_screen` method is used
@@ -148,7 +159,7 @@ class SingleTallyConfig(TallyConfig):
             return True
         return self_ix == oth_ix
 
-    def matches_screen(self, other: Union['SingleTallyConfig', 'MultiTallyConfig', Tally]) -> bool:
+    def matches_screen(self, other: Union[TallyOrMultiTallyConfig, int]) -> bool:
         """Determine whether the :attr:`screen_index` matches the given argument
 
         For :class:`tslumd.tallyobj.Tally`, the
@@ -157,8 +168,8 @@ class SingleTallyConfig(TallyConfig):
         as well as cases where :attr:`screen_index` is set to ``None``
 
         Arguments:
-            other: A :class:`SingleTallyConfig`, :class:`MultiTallyConfig`
-                or :class:`tslumd.tallyobj.Tally` instance
+            other: A :class:`SingleTallyConfig`, :class:`MultiTallyConfig`,
+                :class:`tslumd.tallyobj.Tally` or :class:`int`
         """
         if self.is_broadcast_screen:
             return True
@@ -277,7 +288,7 @@ class MultiTallyConfig(TallyConfig):
         """
         return self.contains(tally)
 
-    def matches_screen(self, other: Union[SingleTallyConfig, 'MultiTallyConfig', Tally]) -> bool:
+    def matches_screen(self, other: Union[TallyOrMultiTallyConfig, int]) -> bool:
         """Determine whether the :attr:`screen_index` matches the given argument
 
         For :class:`tslumd.tallyobj.Tally`, the
@@ -286,8 +297,8 @@ class MultiTallyConfig(TallyConfig):
         as well as cases where :attr:`screen_index` is set to ``None``
 
         Arguments:
-            other: A :class:`SingleTallyConfig`, :class:`MultiTallyConfig`
-                or :class:`tslumd.tallyobj.Tally` instance
+            other: A :class:`SingleTallyConfig`, :class:`MultiTallyConfig`,
+                :class:`tslumd.tallyobj.Tally` or :class:`int`
 
         Note:
             Behavior is undefined if :attr:`allow_all` is ``False``
@@ -300,7 +311,7 @@ class MultiTallyConfig(TallyConfig):
             return self_screen == oth_screen
         return True
 
-    def contains(self, tally: Union[SingleTallyConfig, Tally]) -> bool:
+    def contains(self, tally: TallyOrTallyConfig) -> bool:
         """Determine whether the given tally argument is included in this
         configuration
 
