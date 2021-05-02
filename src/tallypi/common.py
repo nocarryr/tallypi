@@ -21,7 +21,9 @@ TallyOrTallyConfig = Union[Tally, 'SingleTallyConfig']
 TallyOrMultiTallyConfig = Union[TallyOrTallyConfig, 'MultiTallyConfig']
 
 def normalize_screen(obj: Union[TallyOrMultiTallyConfig, int]) -> Union[None, int]:
-    if isinstance(obj, int):
+    if obj is None:
+        return None
+    elif isinstance(obj, int):
         screen = obj
         if obj == 0xffff:
             screen = None
