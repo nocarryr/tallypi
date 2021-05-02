@@ -1,4 +1,5 @@
 import os
+import asyncio
 from typing import Tuple
 from loguru import logger
 
@@ -19,8 +20,17 @@ def mock_gpio():
     import gpiozero
     from gpiozero import Device
     from gpiozero.pins.mock import MockFactory, MockPWMPin
+
+    class LoggingMockPWMPin(MockPWMPin):
+        def _set_state(self, value):
+            super()._set_state(value)
+            logger.debug(f'{self}._set_state({value})')
+        def _set_frequency(self, value):
+            super()._set_frequency(value)
+            logger.debug(f'{self}._set_frequency({value})')
+
     Device.pin_factory = MockFactory()
-    Device.pin_factory.pin_class = MockPWMPin
+    Device.pin_factory.pin_class = LoggingMockPWMPin
     return gpiozero
 
 def mock_rgbmatrix5x5():
