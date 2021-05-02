@@ -165,7 +165,6 @@ class Matrix(Base, namespace='Matrix', final=True):
     async def open(self):
         if self.running:
             return
-        await self.clear_queue()
         await self.queue_update(*self.keys())
         await super().open()
         self.device.set_brightness(self.brightness_scale)
@@ -177,11 +176,11 @@ class Matrix(Base, namespace='Matrix', final=True):
         await super().close()
         t = self._update_task
         self._update_task = None
-        await self.clear_queue()
+        self.clear_queue()
         if t is not None:
             await self.update_queue.put(None)
             await t
-            await self.clear_queue()
+            self.clear_queue()
 
     @logger.catch
     async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
@@ -200,12 +199,12 @@ class Matrix(Base, namespace='Matrix', final=True):
                 changed.add(key)
         await self.queue_update(*changed)
 
-    async def clear_queue(self):
+    def clear_queue(self):
         while not self.update_queue.empty():
             try:
-                await self.update_queue.task_done()
+                self.update_queue.task_done()
             except ValueError:
-                pass
+                break
 
     async def queue_update(self, *keys):
         coros = set()
