@@ -1,3 +1,4 @@
+from loguru import logger
 import asyncio
 import dataclasses
 from dataclasses import dataclass, field
@@ -559,6 +560,15 @@ class BaseIO(Dispatcher):
         """
         self.running = False
 
+    def screen_matches(self, screen: Screen) -> bool:
+        """Determine whether the given screen matches the :attr:`config`
+
+        Uses either :meth:`SingleTallyConfig.matches_screen` or
+        :meth:`MultiTallyConfig.matches_screen`, depending on which of the two
+        are used for the :class:`BaseIO` subclass
+        """
+        return self.config.matches_screen(screen)
+
     def tally_matches(self, tally: Tally) -> bool:
         """Determine whether the given tally matches the :attr:`config`
 
@@ -587,6 +597,10 @@ class BaseInput(BaseIO, namespace='input'):
         config: The initial value for :attr:`~BaseIO.config`
 
     :Events:
+        .. event:: on_screen_added(instance: BaseInput, screen: Screen)
+
+            Fired when a :class:`~tslumd.tallyobj.Screen` has been added
+
         .. event:: on_tally_added(tally: Tally)
 
             Fired when a :class:`~tslumd.tallyobj.Tally` instance has been added
@@ -597,7 +611,20 @@ class BaseInput(BaseIO, namespace='input'):
             has been updated
     """
 
-    _events_ = ['on_tally_added', 'on_tally_updated']
+    _events_ = ['on_screen_added', 'on_tally_added', 'on_tally_updated']
+
+    def get_screen(self, screen_index: int) -> Optional[Screen]:
+        """Get a :class:`~tslumd.tallyobj.Screen` object by the given index
+
+        If no screen exists, ``None`` is returned
+        """
+        raise NotImplementedError
+
+    def get_all_screens(self) -> Iterable[Screen]:
+        """Get all available :class:`~tslumd.tallyobj.Screen` instances for the
+        input
+        """
+        raise NotImplementedError
 
     def get_tally(self, tally_key: TallyKey) -> Optional[Tally]:
         """Get a :class:`~tslumd.tallyobj.Tally` object by the given key
@@ -610,9 +637,13 @@ class BaseInput(BaseIO, namespace='input'):
         """
         raise NotImplementedError
 
-    def get_all_tallies(self) -> Iterable[Tally]:
+    def get_all_tallies(self, screen_index: Optional[int] == None) -> Iterable[Tally]:
         """Get all available :class:`~tslumd.tallyobj.Tally` instances for the
         input
+
+        Arguments:
+            screen_index (int, optional): If present, only include tallies
+                within the specified screen
         """
         raise NotImplementedError
 
@@ -637,24 +668,53 @@ class BaseOutput(BaseIO, namespace='output'):
         config: The initial value for :attr:`~BaseIO.config`
     """
     async def bind_to_input(self, inp: BaseInput):
-        """Check for and set up listeners for matching tallies in the
+        """Find and set up listeners for matching tallies in the
         :class:`input <BaseInput>`
+
+        Searches for any matching screens in the input and calls
+        :meth:`bind_to_screen` for them.
+        Also binds to the :event:`BaseInput.on_screen_added` event to listen
+        for new screens
+        """
+        loop = asyncio.get_event_loop()
+        coros = set()
+        for screen in inp.get_all_screens():
+            if not self.screen_matches(screen):
+                continue
+            coros.add(self.bind_to_screen(inp, screen))
+        inp.bind_async(loop, on_screen_added=self.on_screen_added)
+        if len(coros):
+            await asyncio.gather(*coros)
+
+    async def bind_to_screen(self, inp: BaseInput, screen: Screen):
+        """Find and set up listeners for matching tallies in the given
+        :class:`input <BaseInput>` and :class:`~tslumd.tallyobj.Screen`
 
         Searches for any matching tallies in the input and calls
         :meth:`bind_to_tally` for them.
         Also binds to the :event:`BaseInput.on_tally_added` event to listen
         for new tallies from the input
+
+        Arguments:
+            inp: The :class:`BaseInput` instance
+            screen: The :class:`~tslumd.tallyobj.Screen` within the input
         """
         loop = asyncio.get_event_loop()
         coros = set()
-        for tally in inp.get_all_tallies():
+        for tally in inp.get_all_tallies(screen.index):
             if not self.tally_matches(tally):
                 continue
             coros.add(self.bind_to_tally(tally))
-        inp.bind_async(loop, on_tally_added=self.on_tally_added)
+        screen.bind_async(loop, on_tally_added=self.on_tally_added)
         if len(coros):
             await asyncio.gather(*coros)
 
+    @logger.catch
+    async def on_screen_added(self, inp: BaseInput, screen: Screen, **kwargs):
+        if self.screen_matches(screen):
+            await self.bind_to_screen(inp, screen)
+
+    @logger.catch
     async def on_tally_added(self, tally: Tally, **kwargs):
         if self.tally_matches(tally):
             await self.bind_to_tally(tally)

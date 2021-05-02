@@ -44,6 +44,7 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
         self.screen, self.tally = self.config.create_tally()
         self.tally = Tally(self.tally_index)
         self.tally.bind(on_update=self._on_tallyobj_update)
+        self.emit('on_screen_added', self, self.screen)
         self.emit('on_tally_added', self.tally)
         self.button = gpiozero.Button(self.pin)
         self.button.when_pressed = self._on_button_pressed
@@ -59,12 +60,25 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
         self.screen = None
         self.tally = None
 
+    def get_screen(self, screen_index: int) -> Optional[Screen]:
+        if self.screen is not None:
+            return self.screen
+
+    def get_all_screens(self) -> Iterable[Screen]:
+        if self.screen is not None:
+            return [self.screen]
+
     def get_tally(self, tally_key: TallyKey) -> Optional[Tally]:
         if self.running and tally_key == self.tally.id:
             return self.tally
 
-    def get_all_tallies(self) -> Iterable[Tally]:
-        return (self.tally,)
+    def get_all_tallies(self, screen_index: Optional[int] == None) -> Iterable[Tally]:
+        if self.screen is None:
+            yield None
+        elif screen_index is not None and not self.matches_screen(screen_index):
+            yield None
+        else:
+            yield self.tally
 
     def _set_tally_state(self, state: bool):
         attr = self.tally_type.name
