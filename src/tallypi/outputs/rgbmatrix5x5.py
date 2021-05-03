@@ -186,7 +186,7 @@ class Matrix(Base, namespace='Matrix', final=True):
         for i in range(5):
             tally_index = self.start_index + i
             for j, ttype in enumerate(ttypes):
-                pixel = (i,j)
+                pixel = (j, i)
                 tconf = SingleTallyConfig(
                     screen_index=scr,
                     tally_index=tally_index,
