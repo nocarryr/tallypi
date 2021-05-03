@@ -10,16 +10,18 @@ communication
 """
 from loguru import logger
 import asyncio
-from typing import Dict, Tuple, Iterable, Optional, Any, ClassVar
+from typing import Dict, List, Tuple, Set, Iterable, Optional, Any, ClassVar
 import rgbmatrix5x5
-from tslumd import TallyType, TallyColor, Tally
+from tslumd import TallyType, TallyColor, Tally, TallyKey
 
 from tallypi.common import (
-    SingleTallyOption, SingleTallyConfig, BaseOutput, Pixel, Rgb,
+    SingleTallyOption, SingleTallyConfig, MultiTallyConfig, BaseOutput, Pixel, Rgb,
 )
 from tallypi.config import Option
 
 __all__ = ('Indicator', 'Matrix')
+
+TallyTypeKey = Tuple[int, int, TallyType]
 
 class Base(BaseOutput, namespace='rgbmatrix5x5'):
     """Base class for RGBMatrix5x5 displays
@@ -150,9 +152,13 @@ class Matrix(Base, namespace='Matrix', final=True):
     """
     colors: Dict[Pixel, TallyColor]
     update_queue: asyncio.Queue
+    multi_config: MultiTallyConfig
+    tally_type_map: Dict[TallyTypeKey, Pixel]
     def __init__(self, config: SingleTallyConfig, brightness_scale: Optional[float] = 1.0):
         super().__init__(config, brightness_scale)
         self.colors = {(x,y):TallyColor.OFF for y in range(5) for x in range(5)}
+        self.tally_type_map = {}
+        self.build_multi_config()
         self.update_queue = asyncio.Queue()
         self._update_task = None
 
@@ -171,6 +177,25 @@ class Matrix(Base, namespace='Matrix', final=True):
         """The last tally index (derived from :attr:`start_index`)
         """
         return self.start_index + 4
+
+    def build_multi_config(self) -> MultiTallyConfig:
+        self.tally_type_map.clear()
+        ttypes = [tt for tt in TallyType if tt != TallyType.no_tally]
+        tconfs = []
+        scr = self.config.screen_index
+        for i in range(5):
+            tally_index = self.start_index + i
+            for j, ttype in enumerate(ttypes):
+                pixel = (i,j)
+                tconf = SingleTallyConfig(
+                    screen_index=scr,
+                    tally_index=tally_index,
+                    tally_type=ttype
+                )
+                tconfs.append(tconf)
+                key = tconf.tally_key + (ttype,)
+                self.tally_type_map[key] = pixel
+        self.multi_config = MultiTallyConfig(tallies=tconfs)
 
     async def open(self):
         if self.running:
@@ -193,27 +218,21 @@ class Matrix(Base, namespace='Matrix', final=True):
             self.clear_queue()
 
     def tally_matches(self, tally: Tally) -> bool:
-        if not self.config.matches_screen(tally):
-            return False
-        if tally.is_broadcast:
-            return False
-        return self.start_index <= tally.index <= self.end_index
+        return self.multi_config.matches(tally)
 
     @logger.catch
-    async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
+    async def on_receiver_tally_change(self, tally: Tally, props_changed: Set[str], **kwargs):
         changed = set()
-        if self.tally_matches(tally):
-            y = tally.index - self.tally_index
-            for tally_type in TallyType:
-                if tally_type == TallyType.no_tally:
-                    continue
-                x = tally_type.value - 1
-                key = (x, y)
-                color = getattr(tally, tally_type.name)
-                if color == self.get(key):
-                    continue
-                self[key] = color
-                changed.add(key)
+        for prop in props_changed:
+            if prop not in TallyType.__members__:
+                continue
+            ttype = getattr(TallyType, prop, None)
+            pixel = self.tally_type_map.get(tally.id + (ttype,))
+            color = getattr(tally, prop)
+            if color == self.get(pixel):
+                continue
+            self[pixel] = color
+            changed.add(pixel)
         await self.queue_update(*changed)
 
     def clear_queue(self):

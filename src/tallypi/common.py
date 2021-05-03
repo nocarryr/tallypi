@@ -730,4 +730,5 @@ class BaseOutput(BaseIO, namespace='output'):
         """
         loop = asyncio.get_event_loop()
         tally.bind_async(loop, on_update=self.on_receiver_tally_change)
-        await self.on_receiver_tally_change(tally)
+        props_changed = ('rh_tally', 'txt_tally', 'lh_tally')
+        await self.on_receiver_tally_change(tally, props_changed=props_changed)
