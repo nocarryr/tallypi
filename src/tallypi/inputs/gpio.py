@@ -42,7 +42,7 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
             return
         self.running = True
         self.screen, self.tally = self.config.create_tally()
-        self.tally = Tally(self.tally_index)
+        self.tally = Tally(self.config.tally_index)
         self.tally.bind(on_update=self._on_tallyobj_update)
         self.emit('on_screen_added', self, self.screen)
         self.emit('on_tally_added', self.tally)
@@ -81,14 +81,14 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
             yield self.tally
 
     def _set_tally_state(self, state: bool):
-        attr = self.tally_type.name
+        attr = self.config.tally_type.name
         color = {True: TallyColor.RED, False: TallyColor.OFF}[state]
         setattr(self.tally, attr, color)
 
     def _on_tallyobj_update(self, tally: Tally, props_changed: Iterable[str], **kwargs):
-        if self.tally_type.name not in props_changed:
+        if self.config.tally_type.name not in props_changed:
             return
-        self.emit('on_tally_updated', [self.tally_type.name])
+        self.emit('on_tally_updated', [self.config.tally_type.name])
 
     def _on_button_pressed(self, button):
         if button is not self.button:

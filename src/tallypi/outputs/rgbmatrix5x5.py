@@ -133,7 +133,7 @@ class Indicator(Base, namespace='Indicator', final=True):
             return
         if not self.tally_matches(tally):
             return
-        color = getattr(tally, self.tally_type.name)
+        color = getattr(tally, self.config.tally_type.name)
         if color != self._color:
             await self.set_color(color)
         brightness = tally.normalized_brightness

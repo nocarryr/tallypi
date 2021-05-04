@@ -91,7 +91,7 @@ class BaseLED(BaseOutput, namespace='gpio'):
             return
         if not self.tally_matches(tally):
             return
-        color = getattr(tally, self.tally_type.name)
+        color = getattr(tally, self.config.tally_type.name)
         brightness = tally.normalized_brightness
         self.set_led(color, brightness)
 

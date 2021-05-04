@@ -506,52 +506,6 @@ class BaseIO(Dispatcher):
             d[opt.name] = opt.serialize(value)
         return d
 
-    @property
-    def tally_index(self) -> int:
-        """Alias for :attr:`~SingleTallyConfig.tally_index` of the :attr:`config`
-
-        Note:
-            Only valid if :attr:`config` is a :class:`SingleTallyConfig`
-        """
-        if not isinstance(self.config, SingleTallyConfig):
-            raise ValueError('tally_index not available')
-        return self.config.tally_index
-    @tally_index.setter
-    def tally_index(self, value: int):
-        if not isinstance(self.config, SingleTallyConfig):
-            raise ValueError('tally_index not available')
-        if value == self.tally_index:
-            return
-        self.config.tally_index = value
-        self._tally_config_changed()
-
-    @property
-    def tally_type(self) -> TallyType:
-        """Alias for :attr:`~SingleTallyConfig.tally_type` of the :attr:`config`
-
-        Note:
-            Only valid if :attr:`config` is a :class:`SingleTallyConfig`
-        """
-        if not isinstance(self.config, SingleTallyConfig):
-            raise ValueError('tally_index not available')
-        return self.config.tally_type
-    @tally_type.setter
-    def tally_type(self, value: TallyType):
-        if not isinstance(self.config, SingleTallyConfig):
-            raise ValueError('tally_index not available')
-        if value == self.tally_type:
-            return
-        self._tally_config_changed()
-        self.config.tally_type = value
-
-    def _tally_config_changed(self):
-        """Called when changes to the :attr:`config` are made.
-
-        Subclasses can use this perform any necessary changes
-        :meta public:
-        """
-        pass
-
     async def open(self):
         """Initalize any necessary device communication
         """
