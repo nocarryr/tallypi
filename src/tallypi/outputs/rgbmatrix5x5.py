@@ -145,8 +145,10 @@ class Indicator(Base, namespace='Indicator', final=True):
 class Matrix(Base, namespace='Matrix', final=True):
     """Show the status of up to 5 tallies in a matrix
 
-    The tallies are shown in rows beginning with
-    :attr:`~tallypi.common.BaseIO.tally_index` and ending with :attr:`end_index`.
+    The tallies are shown in 5 rows beginning with the
+    :attr:`~.common.SingleTallyConfig.tally_index`
+    of the :attr:`~.common.BaseIO.config`
+
     The columns show the individual :class:`~tslumd.common.TallyType` values
     ``('rh_tally', 'txt_tally', 'lh_tally')``
     """
@@ -162,29 +164,14 @@ class Matrix(Base, namespace='Matrix', final=True):
         self.update_queue = asyncio.Queue()
         self._update_task = None
 
-    @property
-    def start_index(self) -> int:
-        """The first tally index (the :attr:`~tallypi.common.SingleTallyConfig.tally_index`
-        of the :attr:`~tallypi.common.BaseIO.config`)
-        """
-        ix = self.config.tally_index
-        if ix is None:
-            ix = 0
-        return ix
-
-    @property
-    def end_index(self) -> int:
-        """The last tally index (derived from :attr:`start_index`)
-        """
-        return self.start_index + 4
-
     def build_multi_config(self) -> MultiTallyConfig:
         self.tally_type_map.clear()
         ttypes = [tt for tt in TallyType if tt != TallyType.no_tally]
         tconfs = []
         scr = self.config.screen_index
+        start_index = self.config.tally_index
         for i in range(5):
-            tally_index = self.start_index + i
+            tally_index = start_index + i
             for j, ttype in enumerate(ttypes):
                 pixel = (j, i)
                 tconf = SingleTallyConfig(
