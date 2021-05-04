@@ -10,10 +10,14 @@ from tallypi.common import (
 )
 from tallypi import outputs
 
-def build_single_tally_conf(tally_index, tally_type):
+def build_single_tally_conf(screen_index, tally_index, tally_type):
     if isinstance(tally_type, str):
         tally_type = getattr(TallyType, tally_type)
-    return SingleTallyConfig(tally_index=tally_index, tally_type=tally_type)
+    return SingleTallyConfig(
+        screen_index=screen_index,
+        tally_index=tally_index,
+        tally_type=tally_type,
+    )
 
 def add_object_to_config(obj: BaseIO):
     async def do_add():
@@ -70,22 +74,25 @@ def add_input():
 @add_input.command('umd')
 @click.option('-h', '--hostaddr', default='0.0.0.0')
 @click.option('-p', '--hostport', default=65000, type=int)
-def add_umd_input(hostaddr, hostport):
+@click.option('-s', '--screen-index', 'screen_index', required=False, type=int)
+def add_umd_input(hostaddr, hostport, screen_index):
     ns = 'input.umd.UmdInput'
     cls = BaseIO.get_class_for_namespace(ns)
-    tally_conf = MultiTallyConfig(allow_all=True)
+    tally_conf = MultiTallyConfig(allow_all=True, screen_index=screen_index)
     obj = cls(tally_conf, hostaddr, hostport)
     add_object_to_config(obj)
 
 @add.group('output')
+@click.option('-s', '--screen-index', 'screen_index', required=False, type=int)
 @click.option('-i', '--tally-index', 'tally_index', required=True, type=int)
 @click.option('-t', '--tally-type', 'tally_type', required=True, type=str)
 @click.pass_context
-def add_output(ctx, tally_index, tally_type):
+def add_output(ctx, screen_index, tally_index, tally_type):
     ctx.ensure_object(dict)
+    ctx.obj['screen_index'] = screen_index
     ctx.obj['tally_index'] = tally_index
     ctx.obj['tally_type'] = tally_type
-    ctx.obj['tally_conf'] = build_single_tally_conf(tally_index, tally_type)
+    ctx.obj['tally_conf'] = build_single_tally_conf(screen_index, tally_index, tally_type)
 
 @add_output.command('rgbmatrix')
 @click.argument('display_type', type=click.Choice(['indicator', 'matrix']))

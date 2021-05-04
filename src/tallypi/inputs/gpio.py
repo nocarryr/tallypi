@@ -2,7 +2,7 @@ from typing import Optional, Iterable, Tuple
 import gpiozero
 import colorzero
 
-from tslumd import TallyType, TallyColor, Tally
+from tslumd import TallyType, TallyColor, Screen, Tally, TallyKey
 
 from tallypi.common import (
     SingleTallyOption, SingleTallyConfig, BaseInput, Pixel, Rgb,
@@ -24,11 +24,13 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
         pin: Initial value for :attr:`pin`
     """
     pin: int #: The GPIO input pin number
+    screen: Screen #: A :class:`tslumd.tallyobj.Screen` instance for the input
     tally: Tally #: A :class:`tslumd.tallyobj.Tally` instance for the input
 
     def __init__(self, config: SingleTallyConfig, pin: int):
         super().__init__(config)
         self.pin = pin
+        self.screen = None
         self.tally = None
 
     @classmethod
@@ -39,8 +41,10 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
         if self.running:
             return
         self.running = True
-        self.tally = Tally(self.tally_index)
+        self.screen, self.tally = self.config.create_tally()
+        self.tally = Tally(self.config.tally_index)
         self.tally.bind(on_update=self._on_tallyobj_update)
+        self.emit('on_screen_added', self, self.screen)
         self.emit('on_tally_added', self.tally)
         self.button = gpiozero.Button(self.pin)
         self.button.when_pressed = self._on_button_pressed
@@ -53,24 +57,38 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
             return
         self.running = False
         self.tally.unbind(self)
+        self.screen = None
         self.tally = None
 
-    def get_tally(self, index_: int) -> Optional[Tally]:
-        if self.running and index_ == self.tally_index:
+    def get_screen(self, screen_index: int) -> Optional[Screen]:
+        if self.screen is not None:
+            return self.screen
+
+    def get_all_screens(self) -> Iterable[Screen]:
+        if self.screen is not None:
+            return [self.screen]
+
+    def get_tally(self, tally_key: TallyKey) -> Optional[Tally]:
+        if self.running and tally_key == self.tally.id:
             return self.tally
 
-    def get_all_tallies(self) -> Iterable[Tally]:
-        return (self.tally,)
+    def get_all_tallies(self, screen_index: Optional[int] == None) -> Iterable[Tally]:
+        if self.screen is None:
+            yield None
+        elif screen_index is not None and not self.matches_screen(screen_index):
+            yield None
+        else:
+            yield self.tally
 
     def _set_tally_state(self, state: bool):
-        attr = self.tally_type.name
+        attr = self.config.tally_type.name
         color = {True: TallyColor.RED, False: TallyColor.OFF}[state]
         setattr(self.tally, attr, color)
 
     def _on_tallyobj_update(self, tally: Tally, props_changed: Iterable[str], **kwargs):
-        if self.tally_type.name not in props_changed:
+        if self.config.tally_type.name not in props_changed:
             return
-        self.emit('on_tally_updated', [self.tally_type.name])
+        self.emit('on_tally_updated', [self.config.tally_type.name])
 
     def _on_button_pressed(self, button):
         if button is not self.button:

@@ -1,9 +1,11 @@
+from loguru import logger
+import asyncio
 import dataclasses
 from dataclasses import dataclass, field
-from typing import Dict, Tuple, List, Optional, ClassVar, Iterable
+from typing import Dict, Tuple, List, Optional, ClassVar, Iterable, Union
 
 from pydispatch import Dispatcher
-from tslumd import Tally, TallyColor, TallyType
+from tslumd import Screen, Tally, TallyColor, TallyType, TallyKey
 
 from .config import Option, ListOption
 
@@ -14,6 +16,45 @@ __all__ = (
 
 Pixel = Tuple[int, int] #: A tuple of ``(x, y)`` coordinates
 Rgb = Tuple[int, int, int] #: A color tuple of ``(r, g, b)``
+
+TallyOrTallyConfig = Union[Tally, 'SingleTallyConfig']
+TallyOrMultiTallyConfig = Union[TallyOrTallyConfig, 'MultiTallyConfig']
+
+def normalize_screen(obj: Union[TallyOrMultiTallyConfig, int]) -> Union[None, int]:
+    if obj is None:
+        return None
+    elif isinstance(obj, int):
+        screen = obj
+        if obj == 0xffff:
+            screen = None
+    elif isinstance(obj, Tally):
+        screen = obj.screen.index
+        if obj.screen.is_broadcast:
+            screen = None
+    elif isinstance(obj, Screen):
+        screen = obj.index
+        if obj.is_broadcast:
+            screen = None
+    else:
+        screen = obj.screen_index
+        if obj.is_broadcast_screen:
+            screen = None
+    return screen
+
+def normalize_tally_index(obj: Union[TallyOrTallyConfig, int]) -> Union[None, int]:
+    if isinstance(obj, int):
+        ix = obj
+        if obj == 0xffff:
+            ix = None
+    elif isinstance(obj, Tally):
+        ix = obj.index
+        if obj.is_broadcast:
+            ix = None
+    else:
+        ix = obj.tally_index
+        if obj.is_broadcast_tally:
+            ix = None
+    return ix
 
 @dataclass
 class TallyConfig:
@@ -38,16 +79,57 @@ class SingleTallyConfig(TallyConfig):
     """
 
     tally_index: int
-    """The tally index
+    """The tally index ranging from 0 to 65534 (``0xfffe``)
+
+    The special value of 65535 (``0xffff``) is used as a "broadcast" address
     """
 
     tally_type: TallyType = TallyType.no_tally
     """The :class:`~tslumd.common.TallyType`
     """
 
+    screen_index: Optional[int] = None
+    """The :attr:`~tslumd.tallyobj.Screen.index` of the
+    :class:`tslumd.tallyobj.Screen` the tally belongs to,
+    ranging from 0 to 65534 (``0xfffe``)
+
+    If not provided (or ``None``), the tally is assumed to belong to *any* screen.
+    This is also the case if the value is 65535 (``0xffff``), defined as the
+    "broadcast" screen address.
+    """
+
     name: Optional[str] = ''
     """User-defined name for the tally
     """
+
+    @property
+    def tally_key(self) -> TallyKey:
+        """A tuple of (:attr:`screen_index`, :attr:`tally_index`) matching the
+        format used for :attr:`tslumd.tallyobj.Tally.id`
+
+        If :attr:`screen_index` or :attr:`tally_index` is ``None``, they are set
+        to 65535 (``0xffff``)
+        """
+        scr, tly = self.screen_index, self.tally_index
+        if scr is None:
+            scr = 0xffff
+        if tly is None:
+            tly = 0xffff
+        return (scr, tly)
+
+    @property
+    def is_broadcast_screen(self) -> bool:
+        """``True`` if :attr:`screen_index` is set to ``None`` or the "broadcast"
+        address of 65535 (``0xffff``)
+        """
+        return self.screen_index in (None, 0xffff)
+
+    @property
+    def is_broadcast_tally(self) -> bool:
+        """``True`` if :attr:`tally_index` is set to ``None`` or the "broadcast"
+        address of 65535 (``0xffff``)
+        """
+        return self.tally_index in (None, 0xffff)
 
     @classmethod
     def get_init_options(cls) -> Tuple[Option]:
@@ -60,8 +142,49 @@ class SingleTallyConfig(TallyConfig):
                 validate_cb=lambda x: getattr(TallyType, x),
                 title='TallyType',
             ),
+            Option(name='screen_index', type=int, required=False, title='Screen'),
             Option(name='name', type=str, required=False, default='', title='Name'),
         )
+
+    def matches(self, other: TallyOrTallyConfig) -> bool:
+        """Determine whether the given tally argument matches this one
+
+        For :attr:`screen_index` the :meth:`matches_screen` method is used
+
+        Arguments:
+            other: Either another :class:`SingleTallyConfig` or a
+                :class:`tslumd.tallyobj.Tally` instance
+        """
+        if not self.matches_screen(other):
+            return False
+        if isinstance(other, SingleTallyConfig):
+            if self.tally_type != other.tally_type:
+                return False
+        self_ix = normalize_tally_index(self)
+        oth_ix = normalize_tally_index(other)
+        if None in (self_ix, oth_ix):
+            return True
+        return self_ix == oth_ix
+
+    def matches_screen(self, other: Union[TallyOrMultiTallyConfig, int]) -> bool:
+        """Determine whether the :attr:`screen_index` matches the given argument
+
+        For :class:`tslumd.tallyobj.Tally`, the
+        :attr:`screen's <tslumd.tallyobj.Tally.screen>`
+        :attr:`~tslumd.tallyobj.Screen.is_broadcast` value is taken into account
+        as well as cases where :attr:`screen_index` is set to ``None``
+
+        Arguments:
+            other: A :class:`SingleTallyConfig`, :class:`MultiTallyConfig`,
+                :class:`tslumd.tallyobj.Tally` or :class:`int`
+        """
+        if self.is_broadcast_screen:
+            return True
+        self_screen = normalize_screen(self)
+        oth_screen = normalize_screen(other)
+        if None not in (self_screen, oth_screen):
+            return self_screen == oth_screen
+        return True
 
     def to_dict(self) -> Dict:
         d = super().to_dict()
@@ -75,6 +198,37 @@ class SingleTallyConfig(TallyConfig):
             kw['tally_type'] = getattr(TallyType, kw['tally_type'])
         return super().from_dict(kw)
 
+    def create_screen(self) -> Screen:
+        """Create a :class:`tslumd.tallyobj.Screen` with the :attr:`screen_index`
+        of this object
+        """
+        if self.screen_index is None:
+            return Screen.broadcast()
+        return Screen(self.screen_index)
+
+    def create_tally(self, screen: Optional[Screen] = None) -> Tuple[Screen, Tally]:
+        """Create a :class:`tslumd.tallyobj.Tally` from this instance
+
+        Arguments:
+            screen (tslumd.tallyobj.Screen, optional): The parent
+                :attr:`tslumd.tallyobj.Tally.screen` to add the tally to.
+                If not provided, one will be created
+
+        Returns
+        -------
+        screen : tslumd.tallyobj.Screen
+            The parent screen that was either created or given as an argument
+        tally : tslumd.tallyobj.Tally
+            The tally object
+        """
+        if screen is None:
+            screen = self.create_screen()
+        if self.tally_index is None:
+            tally = screen.broadcast_tally()
+        else:
+            tally = screen.add_tally(self.screen_index)
+        return screen, tally
+
 
 @dataclass
 class MultiTallyConfig(TallyConfig):
@@ -84,13 +238,41 @@ class MultiTallyConfig(TallyConfig):
     """A list of :class:`SingleTallyConfig` instances
     """
 
+    screen_index: Optional[int] = None
+    """The :attr:`~tslumd.tallyobj.Screen.index` of the
+    :class:`tslumd.tallyobj.Screen` for the configuration
+    ranging from 0 to 65534 (``0xfffe``)
+
+    This only takes effect if :attr:`allow_all` is ``True`` and provides a method
+    of filtering the tally assignments to a single :class:`tslumd.tallyobj.Screen`
+    if desired.
+
+    If not provided (or ``None``), all tallies within all screens are considered
+    to be members of the configuration. This is also the case if the value
+    is 65535 (``0xffff``), defined as the "broadcast" screen address.
+    """
+
     allow_all: bool = False
     """If ``True``, all possible tally configurations exist within this instance
+
+    Tallies can still be limited to a specific :attr:`screen_index` if desired
     """
 
     name: Optional[str] = ''
     """User-defined name for the tally config
     """
+
+    @property
+    def is_broadcast_screen(self) -> bool:
+        """``True`` if :attr:`screen_index` is set to ``None`` or the "broadcast"
+        address of 65535 (``0xffff``)
+
+        Note:
+            Behavior is undefined if :attr:`allow_all` is ``False``
+        """
+        if not self.allow_all:
+            return True
+        return self.screen_index in (None, 0xffff)
 
     @classmethod
     def get_init_options(cls) -> Tuple[Option]:
@@ -100,6 +282,7 @@ class MultiTallyConfig(TallyConfig):
                 sub_options=SingleTallyConfig.get_init_options(),
                 title='Tallies',
             ),
+            Option(name='screen_index', type=int, required=False, title='Screen'),
             Option(
                 name='allow_all', type=bool, required=False, default=False,
                 title='Allow All',
@@ -107,14 +290,50 @@ class MultiTallyConfig(TallyConfig):
             Option(name='name', type=str, required=False, default='', title='Name'),
         )
 
-    def contains(self, tally_conf: SingleTallyConfig) -> bool:
-        """Determine if the given :class:`config <SingleTallyConfig>` exists within
-        :attr:`tallies`
+    def matches(self, tally: Union[SingleTallyConfig, Tally]) -> bool:
+        """Alias for :meth:`contains`
+        """
+        return self.contains(tally)
+
+    def matches_screen(self, other: Union[TallyOrMultiTallyConfig, int]) -> bool:
+        """Determine whether the :attr:`screen_index` matches the given argument
+
+        For :class:`tslumd.tallyobj.Tally`, the
+        :attr:`screen's <tslumd.tallyobj.Tally.screen>`
+        :attr:`~tslumd.tallyobj.Screen.is_broadcast` value is taken into account
+        as well as cases where :attr:`screen_index` is set to ``None``
+
+        Arguments:
+            other: A :class:`SingleTallyConfig`, :class:`MultiTallyConfig`,
+                :class:`tslumd.tallyobj.Tally` or :class:`int`
+
+        Note:
+            Behavior is undefined if :attr:`allow_all` is ``False``
+        """
+        if isinstance(other, SingleTallyConfig):
+            return other.matches_screen(self)
+        self_screen = normalize_screen(self)
+        oth_screen = normalize_screen(other)
+        if None not in (self_screen, oth_screen):
+            return self_screen == oth_screen
+        return True
+
+    def contains(self, tally: TallyOrTallyConfig) -> bool:
+        """Determine whether the given tally argument is included in this
+        configuration
+
+        The :meth:`matches_screen` method is used to match the :attr:`screen_index`.
+        If :attr:`allow_all` is ``False``, each object in :attr:`tallies` is
+        :meth:`checked <SingleTallyConfig.matches>`
+
+        Arguments:
+            tally: Either a :class:`SingleTallyConfig` or a
+                :class:`tslumd.tallyobj.Tally` instance
         """
         if self.allow_all:
-            return True
+            return self.matches_screen(tally)
         for t in self.tallies:
-            if t == tally_conf:
+            if t.matches(tally):
                 return True
         return False
 
@@ -287,52 +506,6 @@ class BaseIO(Dispatcher):
             d[opt.name] = opt.serialize(value)
         return d
 
-    @property
-    def tally_index(self) -> int:
-        """Alias for :attr:`~SingleTallyConfig.tally_index` of the :attr:`config`
-
-        Note:
-            Only valid if :attr:`config` is a :class:`SingleTallyConfig`
-        """
-        if not isinstance(self.config, SingleTallyConfig):
-            raise ValueError('tally_index not available')
-        return self.config.tally_index
-    @tally_index.setter
-    def tally_index(self, value: int):
-        if not isinstance(self.config, SingleTallyConfig):
-            raise ValueError('tally_index not available')
-        if value == self.tally_index:
-            return
-        self.config.tally_index = value
-        self._tally_config_changed()
-
-    @property
-    def tally_type(self) -> TallyType:
-        """Alias for :attr:`~SingleTallyConfig.tally_type` of the :attr:`config`
-
-        Note:
-            Only valid if :attr:`config` is a :class:`SingleTallyConfig`
-        """
-        if not isinstance(self.config, SingleTallyConfig):
-            raise ValueError('tally_index not available')
-        return self.config.tally_type
-    @tally_type.setter
-    def tally_type(self, value: TallyType):
-        if not isinstance(self.config, SingleTallyConfig):
-            raise ValueError('tally_index not available')
-        if value == self.tally_type:
-            return
-        self._tally_config_changed()
-        self.config.tally_type = value
-
-    def _tally_config_changed(self):
-        """Called when changes to the :attr:`config` are made.
-
-        Subclasses can use this perform any necessary changes
-        :meta public:
-        """
-        pass
-
     async def open(self):
         """Initalize any necessary device communication
         """
@@ -343,8 +516,26 @@ class BaseIO(Dispatcher):
         """
         self.running = False
 
+    def screen_matches(self, screen: Screen) -> bool:
+        """Determine whether the given screen matches the :attr:`config`
+
+        Uses either :meth:`SingleTallyConfig.matches_screen` or
+        :meth:`MultiTallyConfig.matches_screen`, depending on which of the two
+        are used for the :class:`BaseIO` subclass
+        """
+        return self.config.matches_screen(screen)
+
+    def tally_matches(self, tally: Tally) -> bool:
+        """Determine whether the given tally matches the :attr:`config`
+
+        Uses either :meth:`SingleTallyConfig.matches` or
+        :meth:`MultiTallyConfig.matches`, depending on which of the two are
+        used for the :class:`BaseIO` subclass
+        """
+        return self.config.matches(tally)
+
     async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
-        """Callback for tally updates from :class:`tslumd.receiver.UmdReceiver`
+        """Callback for tally updates from :class:`tslumd.tallyobj.Tally`
         """
         pass
 
@@ -362,6 +553,10 @@ class BaseInput(BaseIO, namespace='input'):
         config: The initial value for :attr:`~BaseIO.config`
 
     :Events:
+        .. event:: on_screen_added(instance: BaseInput, screen: Screen)
+
+            Fired when a :class:`~tslumd.tallyobj.Screen` has been added
+
         .. event:: on_tally_added(tally: Tally)
 
             Fired when a :class:`~tslumd.tallyobj.Tally` instance has been added
@@ -372,18 +567,39 @@ class BaseInput(BaseIO, namespace='input'):
             has been updated
     """
 
-    _events_ = ['on_tally_added', 'on_tally_updated']
+    _events_ = ['on_screen_added', 'on_tally_added', 'on_tally_updated']
 
-    def get_tally(self, index_: int) -> Optional[Tally]:
-        """Get a :class:`~tslumd.tallyobj.Tally` object by the given index
+    def get_screen(self, screen_index: int) -> Optional[Screen]:
+        """Get a :class:`~tslumd.tallyobj.Screen` object by the given index
 
-        If no tally information exists for this input, ``None`` is returned
+        If no screen exists, ``None`` is returned
         """
         raise NotImplementedError
 
-    def get_all_tallies(self) -> Iterable[Tally]:
+    def get_all_screens(self) -> Iterable[Screen]:
+        """Get all available :class:`~tslumd.tallyobj.Screen` instances for the
+        input
+        """
+        raise NotImplementedError
+
+    def get_tally(self, tally_key: TallyKey) -> Optional[Tally]:
+        """Get a :class:`~tslumd.tallyobj.Tally` object by the given key
+
+        If no tally information exists for this input, ``None`` is returned
+
+        Arguments:
+            tally_key (tslumd.common.TallyKey): A tuple of (``screen_index``,
+                ``tally_index``) formatted as :attr:`SingleTallyConfig.tally_key`
+        """
+        raise NotImplementedError
+
+    def get_all_tallies(self, screen_index: Optional[int] == None) -> Iterable[Tally]:
         """Get all available :class:`~tslumd.tallyobj.Tally` instances for the
         input
+
+        Arguments:
+            screen_index (int, optional): If present, only include tallies
+                within the specified screen
         """
         raise NotImplementedError
 
@@ -394,21 +610,11 @@ class BaseInput(BaseIO, namespace='input'):
         If the tally state is unknown for does not match the :attr:`~BaseIO.config`,
         ``None`` is returned
         """
-        if not self.is_tally_configured(tally_conf):
+        if not self.tally_matches(tally_conf):
             return None
-        tally = self.get_tally(tally_conf.tally_index)
+        tally = self.get_tally(tally_conf.tally_key)
         if tally is not None:
             return getattr(tally, tally_conf.tally_type.name)
-
-    def is_tally_configured(self, tally_conf: SingleTallyConfig) -> bool:
-        """Determine if the given :class:`tally config <SingleTallyConfig>`
-        matches the input's :attr:`~BaseIO.config`
-        """
-        if isinstance(self.config, SingleTallyConfig):
-            return tally_conf == self.config
-        elif isinstance(self.config, MultiTallyConfig):
-            return self.config.contains(tally_conf)
-        return False
 
 
 class BaseOutput(BaseIO, namespace='output'):
@@ -417,4 +623,66 @@ class BaseOutput(BaseIO, namespace='output'):
     Arguments:
         config: The initial value for :attr:`~BaseIO.config`
     """
-    pass
+    async def bind_to_input(self, inp: BaseInput):
+        """Find and set up listeners for matching tallies in the
+        :class:`input <BaseInput>`
+
+        Searches for any matching screens in the input and calls
+        :meth:`bind_to_screen` for them.
+        Also binds to the :event:`BaseInput.on_screen_added` event to listen
+        for new screens
+        """
+        loop = asyncio.get_event_loop()
+        coros = set()
+        for screen in inp.get_all_screens():
+            if not self.screen_matches(screen):
+                continue
+            coros.add(self.bind_to_screen(inp, screen))
+        inp.bind_async(loop, on_screen_added=self.on_screen_added)
+        if len(coros):
+            await asyncio.gather(*coros)
+
+    async def bind_to_screen(self, inp: BaseInput, screen: Screen):
+        """Find and set up listeners for matching tallies in the given
+        :class:`input <BaseInput>` and :class:`~tslumd.tallyobj.Screen`
+
+        Searches for any matching tallies in the input and calls
+        :meth:`bind_to_tally` for them.
+        Also binds to the :event:`BaseInput.on_tally_added` event to listen
+        for new tallies from the input
+
+        Arguments:
+            inp: The :class:`BaseInput` instance
+            screen: The :class:`~tslumd.tallyobj.Screen` within the input
+        """
+        loop = asyncio.get_event_loop()
+        coros = set()
+        for tally in inp.get_all_tallies(screen.index):
+            if not self.tally_matches(tally):
+                continue
+            coros.add(self.bind_to_tally(tally))
+        screen.bind_async(loop, on_tally_added=self.on_tally_added)
+        if len(coros):
+            await asyncio.gather(*coros)
+
+    @logger.catch
+    async def on_screen_added(self, inp: BaseInput, screen: Screen, **kwargs):
+        if self.screen_matches(screen):
+            await self.bind_to_screen(inp, screen)
+
+    @logger.catch
+    async def on_tally_added(self, tally: Tally, **kwargs):
+        if self.tally_matches(tally):
+            await self.bind_to_tally(tally)
+
+    async def bind_to_tally(self, tally: Tally):
+        """Update current state and subscribe to changes from the given
+        :class:`~tslumd.tallyobj.Tally`
+
+        Calls :meth:`~BaseIO.on_receiver_tally_change` and binds tally update
+        events to it
+        """
+        loop = asyncio.get_event_loop()
+        tally.bind_async(loop, on_update=self.on_receiver_tally_change)
+        props_changed = ('rh_tally', 'txt_tally', 'lh_tally')
+        await self.on_receiver_tally_change(tally, props_changed=props_changed)

@@ -200,7 +200,24 @@ class Inputs(IOContainer):
         self.emit('on_tally_updated', *args, **kwargs)
 
 class Outputs(IOContainer):
+    """Container for :class:`~.common.BaseOutput` instances
+    """
     objects: Dict[str, BaseOutput]
+
+    async def bind_to_input(self, inp: BaseInput, outp: BaseOutput):
+        await outp.bind_to_input(inp)
+
+    async def bind_all_to_input(self, inp: BaseInput):
+        """Attach all :class:`outputs <.common.BaseOutput>` to the given
+        :class:`input <.common.BaseInput>`
+
+        Calls :meth:`.common.BaseOutput.bind_to_input` for each output instance
+        """
+        coros = set()
+        for outp in self.values():
+            coros.add(self.bind_to_input(inp=inp, outp=outp))
+        if len(coros):
+            await asyncio.gather(*coros)
 
 
 class Manager:
@@ -229,9 +246,14 @@ class Manager:
         self.loop = asyncio.get_event_loop()
         self.inputs = Inputs()
         self.outputs = Outputs()
-        self.outputs.bind(object_added=self.on_output_added)
-        self.inputs.bind_async(self.loop, update=self.on_io_update)
-        self.outputs.bind_async(self.loop, update=self.on_io_update)
+        self.inputs.bind_async(self.loop,
+            object_added=self.on_input_added,
+            update=self.on_io_update,
+        )
+        self.outputs.bind_async(self.loop,
+            object_added=self.on_output_added,
+            update=self.on_io_update,
+        )
         self.config = Config(filename=config_filename)
         self.running = False
         self.config_read = False
@@ -309,13 +331,17 @@ class Manager:
         await self.outputs.deserialize(data.get('outputs', {}))
         self.config_read = True
 
-    def on_output_added(self, key, obj, **kwargs):
-        # Binding all input events to all outputs.
-        # Not efficient and needs to be minimized
-        self.inputs.bind_async(self.loop,
-            on_tally_added=obj.on_receiver_tally_change,
-            on_tally_updated=obj.on_receiver_tally_change,
-        )
+    @logger.catch
+    async def on_input_added(self, key: str, obj: BaseInput, **kwargs):
+        await self.outputs.bind_all_to_input(obj)
+
+    @logger.catch
+    async def on_output_added(self, key: str, obj: BaseOutput, **kwargs):
+        coros = set()
+        for inp in self.inputs.values():
+            coros.add(obj.bind_to_input(inp))
+        if len(coros):
+            await asyncio.gather(*coros)
 
     async def on_io_update(self, *args, **kwargs):
         async with self.readonly_override.state_lock:

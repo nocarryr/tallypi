@@ -1,7 +1,9 @@
+from loguru import logger
+logger.disable('tslumd.tallyobj')
 import asyncio
-from typing import Optional, Tuple, Iterable
+from typing import Optional, Tuple, Iterable, Set
 
-from tslumd import UmdReceiver, TallyType, Tally
+from tslumd import UmdReceiver, TallyType, Screen, Tally, TallyKey
 
 from tallypi.common import BaseInput, MultiTallyConfig, MultiTallyOption
 from tallypi.config import Option
@@ -30,8 +32,11 @@ class UmdInput(BaseInput, namespace='umd.UmdInput', final=True):
 
         super().__init__(config)
         self.loop = asyncio.get_event_loop()
+        self._screen_indices = set()
+        self._tally_keys = set()
         self.receiver = UmdReceiver(hostaddr=hostaddr, hostport=hostport)
         self.receiver.bind(
+            on_screen_added=self._on_receiver_screen_added,
             on_tally_added=self._on_receiver_tally_added,
             on_tally_updated=self._on_receiver_tally_updated
         )
@@ -83,14 +88,45 @@ class UmdInput(BaseInput, namespace='umd.UmdInput', final=True):
         """
         await self.receiver.set_hostport(hostport)
 
-    def get_tally(self, index_: int) -> Optional[Tally]:
-        return self.receiver.tallies.get(index_)
+    def get_screen(self, screen_index: int) -> Optional[Screen]:
+        if screen_index not in self._screen_indices:
+            return None
+        return self.receiver.screens.get(screen_index)
 
-    def get_all_tallies(self) -> Iterable[Tally]:
-        return self.receiver.tallies.values()
+    def get_all_screens(self) -> Iterable[Screen]:
+        for ix in self._screen_indices:
+            yield self.receiver.screens[ix]
 
+    def get_tally(self, tally_key: TallyKey) -> Optional[Tally]:
+        if tally_key not in self._tally_keys:
+            return None
+        return self.receiver.tallies.get(tally_key)
+
+    def get_all_tallies(self, screen_index: Optional[int] == None) -> Iterable[Tally]:
+        if screen_index is not None:
+            screen = self.get_screen(screen_index)
+            tally_iter = []
+            if screen is not None:
+                tally_iter = screen
+            for tally in tally_iter:
+                if tally.id in self._tally_keys:
+                    yield tally
+        else:
+            for tally_key in self._tally_keys:
+                yield self.receiver.tallies[tally_key]
+
+    def _on_receiver_screen_added(self, screen: Screen, **kwargs):
+        if not screen.is_broadcast and self.screen_matches(screen):
+            self._screen_indices.add(screen.index)
+            self.emit('on_screen_added', self, screen)
+
+    @logger.catch
     def _on_receiver_tally_added(self, tally, **kwargs):
-        self.emit('on_tally_added', tally)
+        if self.tally_matches(tally):
+            self._tally_keys.add(tally.id)
+            self.emit('on_tally_added', tally)
 
-    def _on_receiver_tally_updated(self, tally: Tally, **kwargs):
-        self.emit('on_tally_updated', tally)
+    @logger.catch
+    def _on_receiver_tally_updated(self, tally: Tally, props_changed: Set[str], **kwargs):
+        if tally.id in self._tally_keys:
+            self.emit('on_tally_updated', tally, props_changed)
