@@ -14,6 +14,7 @@ Reference
 
     manager
     common
+    baseio
     inputs/index
     outputs/index
     config

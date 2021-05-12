@@ -6,21 +6,21 @@ from typing import Dict, Iterable, Optional, Any
 
 from pydispatch import Dispatcher
 
-from tallypi.common import BaseIO, BaseInput, BaseOutput
+from tallypi.baseio import BaseIO, BaseInput, BaseOutput
 from tallypi.config import Config
 
 __all__ = ('Manager',)
 
 class IOContainer(Dispatcher):
-    """Container for :class:`~.common.BaseIO` instances
+    """Container for :class:`~.baseio.BaseIO` instances
 
     :Events:
-        .. event:: object_added(key: str, obj: tallypi.common.BaseIO)
+        .. event:: object_added(key: str, obj: tallypi.baseio.BaseIO)
 
             Fired when an instance is added by either :meth:`deserialize` or
             :meth:`add`
 
-        .. event:: object_removed(key: str, obj: tallypi.common.BaseIO)
+        .. event:: object_removed(key: str, obj: tallypi.baseio.BaseIO)
 
             Fired when an instance has been removed
 
@@ -38,7 +38,7 @@ class IOContainer(Dispatcher):
         self.running = False
 
     async def open(self):
-        """Call the :meth:`~.common.BaseIO.open` method on all instances
+        """Call the :meth:`~.baseio.BaseIO.open` method on all instances
         """
         if self.running:
             return
@@ -52,7 +52,7 @@ class IOContainer(Dispatcher):
         logger.info(f'{self.__class__} running')
 
     async def close(self):
-        """Call the :meth:`~.common.BaseIO.close` method on all instances
+        """Call the :meth:`~.baseio.BaseIO.close` method on all instances
         """
         if not self.running:
             return
@@ -112,7 +112,7 @@ class IOContainer(Dispatcher):
 
     async def deserialize(self, data: Dict):
         """Deserialize instances from config data using
-        :meth:`.common.BaseIO.deserialize`
+        :meth:`.baseio.BaseIO.deserialize`
         """
         coros = set()
         for key, val in data.items():
@@ -126,7 +126,7 @@ class IOContainer(Dispatcher):
 
     def serialize(self) -> Dict:
         """Serialize instances to store in the config using
-        :meth:`.common.BaseIO.serialize`
+        :meth:`.baseio.BaseIO.serialize`
         """
         data = {}
         for key, obj in self.items():
@@ -166,17 +166,17 @@ class IOContainer(Dispatcher):
         return str(self.objects)
 
 class Inputs(IOContainer):
-    """Container for :class:`~.common.BaseInput` instances
+    """Container for :class:`~.baseio.BaseInput` instances
 
     :Events:
         .. event:: on_tally_added(tally: tslumd.tallyobj.Tally)
 
-            Fired when the :event:`.common.BaseInput.on_tally_added`
+            Fired when the :event:`.baseio.BaseInput.on_tally_added`
             event received from any of the inputs in the container
 
         .. event:: on_tally_updated(tally: tslumd.tallyobj.Tally)
 
-            Fired when the :event:`.common.BaseInput.on_tally_updated`
+            Fired when the :event:`.baseio.BaseInput.on_tally_updated`
             event received from any of the inputs in the container
     """
     objects: Dict[str, BaseInput]
@@ -200,7 +200,7 @@ class Inputs(IOContainer):
         self.emit('on_tally_updated', *args, **kwargs)
 
 class Outputs(IOContainer):
-    """Container for :class:`~.common.BaseOutput` instances
+    """Container for :class:`~.baseio.BaseOutput` instances
     """
     objects: Dict[str, BaseOutput]
 
@@ -208,10 +208,10 @@ class Outputs(IOContainer):
         await outp.bind_to_input(inp)
 
     async def bind_all_to_input(self, inp: BaseInput):
-        """Attach all :class:`outputs <.common.BaseOutput>` to the given
-        :class:`input <.common.BaseInput>`
+        """Attach all :class:`outputs <.baseio.BaseOutput>` to the given
+        :class:`input <.baseio.BaseInput>`
 
-        Calls :meth:`.common.BaseOutput.bind_to_input` for each output instance
+        Calls :meth:`.baseio.BaseOutput.bind_to_input` for each output instance
         """
         coros = set()
         for outp in self.values():

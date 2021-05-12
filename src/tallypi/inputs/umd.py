@@ -5,7 +5,8 @@ from typing import Optional, Tuple, Iterable, Set
 
 from tslumd import UmdReceiver, TallyType, Screen, Tally, TallyKey
 
-from tallypi.common import BaseInput, MultiTallyConfig, MultiTallyOption
+from tallypi.common import MultiTallyConfig, MultiTallyOption
+from tallypi.baseio import BaseInput
 from tallypi.config import Option
 
 __all__ = ('UmdInput',)
@@ -15,7 +16,7 @@ class UmdInput(BaseInput, namespace='umd.UmdInput', final=True):
 
     Arguments:
         config(MultiTallyConfig): The initial value for
-            :attr:`~tallypi.common.BaseIO.config`
+            :attr:`~tallypi.baseio.BaseIO.config`
         hostaddr(str, optional): The local :attr:`hostaddr` to listen on.
             Defaults to :attr:`tslumd.receiver.UmdReceiver.DEFAULT_HOST`
         hostport(int, optional): The UDP :attr:`hostport` to listen on.

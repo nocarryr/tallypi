@@ -8,18 +8,6 @@
     :no-members:
     :noindex:
 
-IO Classes
-----------
-
-.. autoclass:: BaseIO
-    :members:
-
-.. autoclass:: BaseInput
-    :members:
-
-.. autoclass:: BaseOutput
-    :members:
-
 
 TallyConfig Classes
 -------------------

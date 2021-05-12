@@ -4,7 +4,8 @@ import pytest
 
 from tslumd import TallyType
 from tallypi.manager import Manager
-from tallypi.common import BaseIO, SingleTallyConfig
+from tallypi.common import SingleTallyConfig
+from tallypi.baseio import BaseIO
 
 DATA_DIR = Path(__file__).parent / 'data'
 

@@ -7,8 +7,9 @@ import colorzero
 from tslumd import TallyType, TallyColor, Tally
 
 from tallypi.common import (
-    SingleTallyConfig, SingleTallyOption, BaseOutput, Pixel, Rgb,
+    SingleTallyConfig, SingleTallyOption, Pixel, Rgb,
 )
+from tallypi.baseio import BaseOutput
 from tallypi.config import Option, ListOption
 
 __all__ = ('LED', 'PWMLED', 'RGBLED')
@@ -34,7 +35,7 @@ class BaseLED(BaseOutput, namespace='gpio'):
 
     Arguments:
         config(SingleTallyConfig): The initial value for
-            :attr:`~tallypi.common.BaseIO.config`
+            :attr:`~tallypi.baseio.BaseIO.config`
         active_high(bool, optional): Set to ``True`` (the default) for common
             cathode LEDs, ``False`` for common anode LEDs
         brightness_scale(float, optional): The value to set for
@@ -100,7 +101,7 @@ class SingleLED(BaseLED):
 
     Arguments:
         config(SingleTallyConfig): The initial value for
-            :attr:`~tallypi.common.BaseIO.config`
+            :attr:`~tallypi.baseio.BaseIO.config`
         pin(int): The GPIO pin number for the LED
         active_high(bool, optional): Set to ``True`` (the default) for common
             cathode LEDs, ``False`` for common anode LEDs
@@ -130,7 +131,7 @@ class LED(SingleLED, namespace='LED', final=True):
 
     Arguments:
         config(SingleTallyConfig): The initial value for
-            :attr:`~tallypi.common.BaseIO.config`
+            :attr:`~tallypi.baseio.BaseIO.config`
         pin (int): The GPIO pin number for the LED
         active_high(bool, optional): Set to ``True`` (the default) for common
             cathode LEDs, ``False`` for common anode LEDs
@@ -153,7 +154,7 @@ class PWMLED(SingleLED, namespace='PWMLED', final=True):
 
     Arguments:
         config(SingleTallyConfig): The initial value for
-            :attr:`~tallypi.common.BaseIO.config`
+            :attr:`~tallypi.baseio.BaseIO.config`
         pin (int): The GPIO pin number for the LED
         active_high(bool, optional): Set to ``True`` (the default) for common
             cathode LEDs, ``False`` for common anode LEDs
@@ -175,7 +176,7 @@ class RGBLED(BaseLED, namespace='RGBLED', final=True):
 
     Arguments:
         config(SingleTallyConfig): The initial value for
-            :attr:`~tallypi.common.BaseIO.config`
+            :attr:`~tallypi.baseio.BaseIO.config`
         pins: Initial value for :attr:`pins`
         active_high(bool, optional): Set to ``True`` (the default) for common
             cathode LEDs, ``False`` for common anode LEDs

@@ -5,8 +5,9 @@ import colorzero
 from tslumd import TallyType, TallyColor, Screen, Tally, TallyKey
 
 from tallypi.common import (
-    SingleTallyOption, SingleTallyConfig, BaseInput, Pixel, Rgb,
+    SingleTallyOption, SingleTallyConfig, Pixel, Rgb,
 )
+from tallypi.baseio import BaseInput
 from tallypi.config import Option
 
 __all__ = ('GpioInput',)
@@ -20,7 +21,7 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
 
     Arguments:
         config (SingleTallyConfig): The initial value for
-            :attr:`~tallypi.common.BaseIO.config`
+            :attr:`~tallypi.baseio.BaseIO.config`
         pin: Initial value for :attr:`pin`
     """
     pin: int #: The GPIO input pin number

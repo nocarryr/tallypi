@@ -5,9 +5,8 @@ from tslumd import TallyType
 
 from tallypi.manager import Manager
 from tallypi.config import Config
-from tallypi.common import (
-    BaseIO, BaseInput, BaseOutput, SingleTallyConfig, MultiTallyConfig,
-)
+from tallypi.common import (SingleTallyConfig, MultiTallyConfig)
+from tallypi.baseio import BaseIO, BaseInput, BaseOutput
 from tallypi import outputs
 
 def build_single_tally_conf(screen_index, tally_index, tally_type):

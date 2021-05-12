@@ -15,8 +15,9 @@ import rgbmatrix5x5
 from tslumd import TallyType, TallyColor, Tally, TallyKey
 
 from tallypi.common import (
-    SingleTallyOption, SingleTallyConfig, MultiTallyConfig, BaseOutput, Pixel, Rgb,
+    SingleTallyOption, SingleTallyConfig, MultiTallyConfig, Pixel, Rgb,
 )
+from tallypi.baseio import BaseOutput
 from tallypi.config import Option
 
 __all__ = ('Indicator', 'Matrix')
@@ -28,7 +29,7 @@ class Base(BaseOutput, namespace='rgbmatrix5x5'):
 
     Arguments:
         config(SingleTallyConfig): The initial value for
-            :attr:`~tallypi.common.BaseIO.config`
+            :attr:`~tallypi.baseio.BaseIO.config`
         brightness_scale(float, optional): The value to set for
             :attr:`brightness_scale`. Default is 1.0
     """
@@ -147,7 +148,7 @@ class Matrix(Base, namespace='Matrix', final=True):
 
     The tallies are shown in 5 rows beginning with the
     :attr:`~.common.SingleTallyConfig.tally_index`
-    of the :attr:`~.common.BaseIO.config`
+    of the :attr:`~.baseio.BaseIO.config`
 
     The columns show the individual :class:`~tslumd.common.TallyType` values
     ``('rh_tally', 'txt_tally', 'lh_tally')``
