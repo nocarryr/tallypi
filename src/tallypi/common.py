@@ -2,7 +2,7 @@ import dataclasses
 from dataclasses import dataclass, field
 from typing import Dict, Tuple, List, Optional, Union
 
-from tslumd import Screen, Tally, TallyType, TallyKey
+from tslumd import Screen, Tally, TallyType, TallyKey, TallyColor
 
 from .config import Option, ListOption
 
@@ -15,6 +15,12 @@ Rgb = Tuple[int, int, int] #: A color tuple of ``(r, g, b)``
 
 TallyOrTallyConfig = Union[Tally, 'SingleTallyConfig']
 TallyOrMultiTallyConfig = Union[TallyOrTallyConfig, 'MultiTallyConfig']
+
+TallyColorOption = Option(
+    name='color_mask', type=str, required=False, title='Color',
+    serialize_cb=lambda x: x.to_str(),
+    validate_cb=lambda x: TallyType.from_str(x),
+)
 
 def normalize_screen(obj: Union[TallyOrMultiTallyConfig, int]) -> Union[None, int]:
     if obj is None:
@@ -84,6 +90,12 @@ class SingleTallyConfig(TallyConfig):
     """The :class:`~tslumd.common.TallyType`
     """
 
+    color_mask: TallyColor = TallyColor.AMBER
+    """An optional mask which can limit the color changes
+
+    The default (:attr:`~.tslumd.common.TallyColor.AMBER`) allows all changes
+    """
+
     screen_index: Optional[int] = None
     """The :attr:`~tslumd.tallyobj.Screen.index` of the
     :class:`tslumd.tallyobj.Screen` the tally belongs to,
@@ -138,6 +150,7 @@ class SingleTallyConfig(TallyConfig):
                 validate_cb=lambda x: getattr(TallyType, x),
                 title='TallyType',
             ),
+            TallyColorOption,
             Option(name='screen_index', type=int, required=False, title='Screen'),
             Option(name='name', type=str, required=False, default='', title='Name'),
         )
