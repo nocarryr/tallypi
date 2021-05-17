@@ -146,8 +146,8 @@ class SingleTallyConfig(TallyConfig):
             Option(name='tally_index', type=int, required=True, title='Index'),
             Option(
                 name='tally_type', type=str, required=True, choices=tt_choices,
-                serialize_cb=lambda x: x.name,
-                validate_cb=lambda x: getattr(TallyType, x),
+                serialize_cb=lambda x: x.to_str(),
+                validate_cb=lambda x: TallyType.from_str(x),
                 title='TallyType',
             ),
             TallyColorOption,
@@ -197,14 +197,14 @@ class SingleTallyConfig(TallyConfig):
 
     def to_dict(self) -> Dict:
         d = super().to_dict()
-        d['tally_type'] = d['tally_type'].name
+        d['tally_type'] = d['tally_type'].to_str()
         return d
 
     @classmethod
     def from_dict(cls, d: Dict) -> 'SingleTallyConfig':
         kw = d.copy()
         if not isinstance(kw['tally_type'], TallyType):
-            kw['tally_type'] = getattr(TallyType, kw['tally_type'])
+            kw['tally_type'] = TallyType.from_str(kw['tally_type'])
         return super().from_dict(kw)
 
     def create_screen(self) -> Screen:
