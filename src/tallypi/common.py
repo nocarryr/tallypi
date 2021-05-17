@@ -167,7 +167,7 @@ class SingleTallyConfig(TallyConfig):
         if not self.matches_screen(other):
             return False
         if isinstance(other, SingleTallyConfig):
-            if self.tally_type != other.tally_type:
+            if self.tally_type & other.tally_type == TallyType.no_tally:
                 return False
         self_ix = normalize_tally_index(self)
         oth_ix = normalize_tally_index(other)
