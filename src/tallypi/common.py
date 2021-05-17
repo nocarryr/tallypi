@@ -22,10 +22,12 @@ TallyColorOption = Option(
     validate_cb=lambda x: TallyType.from_str(x),
 )
 
-def normalize_screen(obj: Union[TallyOrMultiTallyConfig, int]) -> Union[None, int]:
+def normalize_screen(obj: Union[TallyKey, TallyOrMultiTallyConfig, int]) -> Union[None, int]:
     if obj is None:
         return None
-    elif isinstance(obj, int):
+    elif isinstance(obj, tuple):
+        obj = obj[0]
+    if isinstance(obj, int):
         screen = obj
         if obj == 0xffff:
             screen = None
@@ -43,7 +45,9 @@ def normalize_screen(obj: Union[TallyOrMultiTallyConfig, int]) -> Union[None, in
             screen = None
     return screen
 
-def normalize_tally_index(obj: Union[TallyOrTallyConfig, int]) -> Union[None, int]:
+def normalize_tally_index(obj: Union[TallyKey, TallyOrTallyConfig, int]) -> Union[None, int]:
+    if isinstance(obj, tuple):
+        obj = obj[1]
     if isinstance(obj, int):
         ix = obj
         if obj == 0xffff:
@@ -110,6 +114,16 @@ class SingleTallyConfig(TallyConfig):
     """User-defined name for the tally
     """
 
+    @classmethod
+    def from_tally(cls, tally: Tally, **kwargs) -> 'SingleTallyConfig':
+        """Create a :class:`SingleTallyConfig` from a :class:`~tslumd.tallyobj.Tally`
+        """
+        kwargs.setdefault('tally_type', TallyType.all_tally)
+        scr, tly = tally.id
+        scr = normalize_screen(tally)
+        tly = normalize_tally_index(tally)
+        return cls(screen_index=scr, tally_index=tly, **kwargs)
+
     @property
     def tally_key(self) -> TallyKey:
         """A tuple of (:attr:`screen_index`, :attr:`tally_index`) matching the
@@ -124,6 +138,13 @@ class SingleTallyConfig(TallyConfig):
         if tly is None:
             tly = 0xffff
         return (scr, tly)
+
+    @property
+    def id(self) -> TallyKey:
+        """Alias for :attr:`tally_key` to match
+        :attr:`Tally.id <tslumd.tallyobj.Tally.id>`
+        """
+        return self.tally_key
 
     @property
     def is_broadcast_screen(self) -> bool:
@@ -155,27 +176,44 @@ class SingleTallyConfig(TallyConfig):
             Option(name='name', type=str, required=False, default='', title='Name'),
         )
 
-    def matches(self, other: TallyOrTallyConfig) -> bool:
+    def matches(
+        self,
+        other: Union[TallyOrTallyConfig, TallyKey],
+        tally_type: Optional[TallyType] = TallyType.all_tally,
+        return_matched: Optional[bool] = False
+    ) -> Union[bool, 'SingleTallyConfig']:
         """Determine whether the given tally argument matches this one
 
         For :attr:`screen_index` the :meth:`matches_screen` method is used
 
         Arguments:
-            other: Either another :class:`SingleTallyConfig` or a
-                :class:`tslumd.tallyobj.Tally` instance
+            other: Either another :class:`SingleTallyConfig`, a
+                :class:`tslumd.tallyobj.Tally` instance or a :term:`TallyKey`
+            tally_type: If provided, a :class:`~tslumd.common.TallyType` member
+                (or members) to match against
+            return_matched: If False (the default), only return a boolean result,
+                otherwise return the matched :class:`SingleTallyConfig` if one
+                was found.
+
         """
         if not self.matches_screen(other):
             return False
         if isinstance(other, SingleTallyConfig):
             if self.tally_type & other.tally_type == TallyType.no_tally:
                 return False
+        if self.tally_type & tally_type == TallyType.no_tally:
+            return False
         self_ix = normalize_tally_index(self)
         oth_ix = normalize_tally_index(other)
         if None in (self_ix, oth_ix):
-            return True
-        return self_ix == oth_ix
+            r = True
+        else:
+            r = self_ix == oth_ix
+        if r and return_matched:
+            return self
+        return r
 
-    def matches_screen(self, other: Union[TallyOrMultiTallyConfig, int]) -> bool:
+    def matches_screen(self, other: Union[TallyOrMultiTallyConfig, TallyKey, int]) -> bool:
         """Determine whether the :attr:`screen_index` matches the given argument
 
         For :class:`tslumd.tallyobj.Tally`, the
@@ -235,7 +273,7 @@ class SingleTallyConfig(TallyConfig):
         if self.tally_index is None:
             tally = screen.broadcast_tally()
         else:
-            tally = screen.add_tally(self.screen_index)
+            tally = screen.add_tally(self.tally_index)
         return screen, tally
 
 
@@ -299,12 +337,17 @@ class MultiTallyConfig(TallyConfig):
             Option(name='name', type=str, required=False, default='', title='Name'),
         )
 
-    def matches(self, tally: Union[SingleTallyConfig, Tally]) -> bool:
+    def matches(
+        self,
+        tally: Union[TallyOrTallyConfig, TallyKey],
+        tally_type: Optional[TallyType] = TallyType.all_tally,
+        return_matched: Optional[bool] = False
+    ) -> Union[bool, SingleTallyConfig]:
         """Alias for :meth:`contains`
         """
-        return self.contains(tally)
+        return self.contains(tally, tally_type, return_matched)
 
-    def matches_screen(self, other: Union[TallyOrMultiTallyConfig, int]) -> bool:
+    def matches_screen(self, other: Union[TallyOrMultiTallyConfig, TallyKey, int]) -> bool:
         """Determine whether the :attr:`screen_index` matches the given argument
 
         For :class:`tslumd.tallyobj.Tally`, the
@@ -319,6 +362,8 @@ class MultiTallyConfig(TallyConfig):
         Note:
             Behavior is undefined if :attr:`allow_all` is ``False``
         """
+        if self.screen_index is None:
+            return True
         if isinstance(other, SingleTallyConfig):
             return other.matches_screen(self)
         self_screen = normalize_screen(self)
@@ -327,7 +372,12 @@ class MultiTallyConfig(TallyConfig):
             return self_screen == oth_screen
         return True
 
-    def contains(self, tally: TallyOrTallyConfig) -> bool:
+    def contains(
+        self,
+        tally: Union[TallyOrTallyConfig, TallyKey],
+        tally_type: Optional[TallyType] = TallyType.all_tally,
+        return_matched: Optional[bool] = False
+    ) -> Union[bool, SingleTallyConfig]:
         """Determine whether the given tally argument is included in this
         configuration
 
@@ -336,13 +386,25 @@ class MultiTallyConfig(TallyConfig):
         :meth:`checked <SingleTallyConfig.matches>`
 
         Arguments:
-            tally: Either a :class:`SingleTallyConfig` or a
-                :class:`tslumd.tallyobj.Tally` instance
+            tally: Either another :class:`SingleTallyConfig`, a
+                :class:`tslumd.tallyobj.Tally` instance or a :term:`TallyKey`
+            tally_type: If provided, a :class:`~tslumd.common.TallyType` member
+                (or members) to match against
+            return_matched: If False (the default), only return a boolean result,
+                otherwise return the matched :class:`SingleTallyConfig` if one
+                was found.
         """
         if self.allow_all:
-            return self.matches_screen(tally)
+            if not self.matches_screen(tally):
+                return False
+            if return_matched:
+                ret = self._create_single_conf(tally, tally_type)
+                return ret
+            return True
         for t in self.tallies:
-            if t.matches(tally):
+            if t.matches(tally, tally_type):
+                if return_matched:
+                    return t
                 return True
         return False
 
@@ -356,6 +418,25 @@ class MultiTallyConfig(TallyConfig):
         tallies = kw['tallies']
         kw['tallies'] = [SingleTallyConfig.from_dict(td) for td in tallies]
         return super().from_dict(kw)
+
+    def _create_single_conf(
+        self,
+        tally: Union[TallyOrTallyConfig, TallyKey],
+        tally_type: Optional[TallyType] = TallyType.all_tally
+    ) -> SingleTallyConfig:
+
+        if isinstance(tally, SingleTallyConfig):
+            ret = tally
+        elif not isinstance(tally, Tally):
+            scr, tly = tally
+            ret = SingleTallyConfig(
+                screen_index=scr,
+                tally_index=tly,
+                tally_type=tally_type,
+            )
+        else:
+            ret = SingleTallyConfig.from_tally(tally, tally_type=tally_type)
+        return ret
 
 SingleTallyOption = Option(
     name='config', type=SingleTallyConfig, required=True,

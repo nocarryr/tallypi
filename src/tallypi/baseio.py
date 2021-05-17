@@ -1,9 +1,9 @@
 from loguru import logger
 import asyncio
-from typing import Dict, Tuple, Optional, ClassVar, Iterable
+from typing import Dict, Tuple, Set, Optional, ClassVar, Iterable, Union
 
 from pydispatch import Dispatcher
-from tslumd import Screen, Tally, TallyColor, TallyKey
+from tslumd import Screen, Tally, TallyColor, TallyKey, TallyType
 
 from .common import TallyConfig, SingleTallyConfig, MultiTallyConfig
 from .config import Option

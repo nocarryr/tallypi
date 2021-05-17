@@ -10,7 +10,7 @@ communication
 """
 from loguru import logger
 import asyncio
-from typing import Dict, List, Tuple, Set, Iterable, Optional, Any, ClassVar
+from typing import Dict, List, Tuple, Set, Iterable, Optional, Any, ClassVar, Union
 import rgbmatrix5x5
 from tslumd import TallyType, TallyColor, Tally, TallyKey
 
@@ -205,8 +205,13 @@ class Matrix(Base, namespace='Matrix', final=True):
             await t
             self.clear_queue()
 
-    def tally_matches(self, tally: Tally) -> bool:
-        return self.multi_config.matches(tally)
+    def tally_matches(
+        self,
+        tally: Tally,
+        tally_type: Optional[TallyType] = TallyType.all_tally,
+        return_matched: Optional[bool] = False
+    ) -> Union[bool, SingleTallyConfig]:
+        return self.multi_config.matches(tally, tally_type, return_matched)
 
     @logger.catch
     async def on_receiver_tally_change(self, tally: Tally, props_changed: Set[str], **kwargs):
