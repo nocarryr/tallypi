@@ -244,7 +244,7 @@ class BaseInput(BaseIO, namespace='input'):
         """
         raise NotImplementedError
 
-    def get_all_tallies(self, screen_index: Optional[int] == None) -> Iterable[Tally]:
+    def get_all_tallies(self, screen_index: Optional[int] = None) -> Iterable[Tally]:
         """Get all available :class:`~tslumd.tallyobj.Tally` instances for the
         input
 

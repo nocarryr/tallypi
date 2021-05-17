@@ -103,7 +103,7 @@ class UmdInput(BaseInput, namespace='umd.UmdInput', final=True):
             return None
         return self.receiver.tallies.get(tally_key)
 
-    def get_all_tallies(self, screen_index: Optional[int] == None) -> Iterable[Tally]:
+    def get_all_tallies(self, screen_index: Optional[int] = None) -> Iterable[Tally]:
         if screen_index is not None:
             screen = self.get_screen(screen_index)
             tally_iter = []

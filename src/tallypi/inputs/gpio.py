@@ -73,7 +73,7 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
         if self.running and tally_key == self.tally.id:
             return self.tally
 
-    def get_all_tallies(self, screen_index: Optional[int] == None) -> Iterable[Tally]:
+    def get_all_tallies(self, screen_index: Optional[int] = None) -> Iterable[Tally]:
         if self.screen is None:
             yield None
         elif screen_index is not None and not self.matches_screen(screen_index):
