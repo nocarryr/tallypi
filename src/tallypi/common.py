@@ -1,6 +1,7 @@
 import dataclasses
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, InitVar
 from typing import Dict, Tuple, List, Optional, Union
+from pydispatch.properties import ObservableList
 
 from tslumd import Screen, Tally, TallyType, TallyKey, TallyColor
 
@@ -61,6 +62,11 @@ def normalize_tally_index(obj: Union[TallyKey, TallyOrTallyConfig, int]) -> Unio
         if obj.is_broadcast_tally:
             ix = None
     return ix
+
+def get_tally_key(obj: Union[TallyKey, TallyOrTallyConfig]) -> TallyKey:
+    if isinstance(obj, tuple):
+        return obj
+    return obj.id
 
 @dataclass
 class TallyConfig:
@@ -281,7 +287,7 @@ class SingleTallyConfig(TallyConfig):
 class MultiTallyConfig(TallyConfig):
     """Configuration for multiple tallies
     """
-    tallies: List[SingleTallyConfig] = field(default_factory=list)
+    tallies: InitVar[List[SingleTallyConfig]] = None
     """A list of :class:`SingleTallyConfig` instances
     """
 
@@ -308,6 +314,25 @@ class MultiTallyConfig(TallyConfig):
     name: Optional[str] = ''
     """User-defined name for the tally config
     """
+
+    def __post_init__(self, tallies):
+        if tallies is None:
+            tallies = []
+        self._tallies_by_key = None
+        self.copy_on_change = False
+        self.tallies = ObservableList(tallies, obj=self, property=self)
+
+    def _on_change(self, obj, old, value, **kwargs):
+        """This is a callback from :class:`pydispatch.properties.ObservableList`
+        """
+        self._memoized_tally_confs = None
+
+    @property
+    def memoized_tally_confs(self) -> Dict[TallyKey, Dict[TallyType, SingleTallyConfig]]:
+        r = getattr(self, '_memoized_tally_confs', None)
+        if r is None:
+            r = self._memoized_tally_confs = {}
+        return r
 
     @property
     def is_broadcast_screen(self) -> bool:
@@ -386,27 +411,65 @@ class MultiTallyConfig(TallyConfig):
         :meth:`checked <SingleTallyConfig.matches>`
 
         Arguments:
-            tally: Either another :class:`SingleTallyConfig`, a
-                :class:`tslumd.tallyobj.Tally` instance or a :term:`TallyKey`
-            tally_type: If provided, a :class:`~tslumd.common.TallyType` member
-                (or members) to match against
-            return_matched: If False (the default), only return a boolean result,
-                otherwise return the matched :class:`SingleTallyConfig` if one
-                was found.
+            tally: Either a :class:`SingleTallyConfig` or a
+                :class:`tslumd.tallyobj.Tally` instance
         """
+
+        memoized = self.search_memoized(tally, tally_type)
+        if memoized is not None:
+            if return_matched:
+                return memoized
+            return True
+
         if self.allow_all:
             if not self.matches_screen(tally):
                 return False
             if return_matched:
                 ret = self._create_single_conf(tally, tally_type)
+                self.add_memoized(ret)
                 return ret
             return True
+        t = self._search_tallies(tally, tally_type)
+        if t is not None:
+            self.add_memoized(t)
+            if return_matched:
+                return t
+            return True
+        return False
+
+    def _search_tallies(
+        self,
+        tally: Union[TallyOrTallyConfig, TallyKey],
+        tally_type: Optional[TallyType] = TallyType.all_tally
+    ) -> Optional[SingleTallyConfig]:
         for t in self.tallies:
             if t.matches(tally, tally_type):
-                if return_matched:
-                    return t
-                return True
-        return False
+                return t
+
+    def search_memoized(
+        self,
+        obj: Union[TallyOrTallyConfig],
+        tally_type: Optional[TallyType] = TallyType.all_tally
+    ) -> Optional[SingleTallyConfig]:
+        memo = self.memoized_tally_confs
+        t_id = get_tally_key(obj)
+        if t_id not in memo:
+            return None
+        if isinstance(obj, SingleTallyConfig):
+            ttype = obj.tally_type
+        else:
+            ttype = tally_type
+        return memo[t_id].get(ttype)
+
+    def add_memoized(self, obj: SingleTallyConfig):
+        memo = self.memoized_tally_confs
+        if obj.id not in memo:
+            memo[obj.id] = {}
+        # assert obj.tally_type not in memo[obj.id], 'obj exists'
+        if obj.tally_type in memo[obj.id]:
+            oth = memo[obj.id][obj.tally_type]
+            assert obj == oth
+        memo[obj.id][obj.tally_type] = obj
 
     def to_dict(self) -> Dict:
         tallies = [c.to_dict() for c in self.tallies]

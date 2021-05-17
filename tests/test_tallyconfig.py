@@ -237,3 +237,67 @@ def test_multi_tally_type_matching(matched_sconfs, unmatched_sconfs):
         assert not mconf1.matches(sconf0)
         for sconf1 in sconfs[1:]:
             assert not mconf0.matches(sconf1)
+
+def test_memoization():
+    mconf0 = MultiTallyConfig(screen_index=None, allow_all=True)
+    mconf1 = MultiTallyConfig()
+
+    for i in range(8):
+        for j in range(16):
+            for tally_type in TallyType.all():
+                conf = SingleTallyConfig(
+                    screen_index=i, tally_index=j, tally_type=tally_type,
+                )
+                mconf1.tallies.append(conf)
+
+    for i in range(8):
+        screen = None
+        for j in range(16):
+            t_id = (i, j)
+
+            tally_type = TallyType.rh_tally
+            sconf0 = SingleTallyConfig(
+                screen_index=i, tally_index=j, tally_type=tally_type,
+            )
+            match = mconf0.matches(sconf0, return_matched=True)
+            assert match is sconf0
+            match = mconf0.matches(sconf0, return_matched=True)
+            assert match is sconf0
+            match = mconf0.matches(sconf0.id, tally_type, return_matched=True)
+            assert match is sconf0
+
+
+
+            tally_type = TallyType.txt_tally
+            sconf1 = mconf0.matches(t_id, tally_type, return_matched=True)
+            assert sconf1.id == t_id
+            assert sconf1.tally_type == tally_type
+            assert sconf1 is not sconf0
+            match = mconf0.matches(sconf1, return_matched=True)
+            assert match is sconf1
+            match = mconf0.matches(sconf1.id, tally_type, return_matched=True)
+            assert match is sconf1
+            match = mconf0.matches(sconf1, tally_type, return_matched=True)
+            assert match is sconf1
+
+            tally_type = TallyType.lh_tally
+            tmp_conf = SingleTallyConfig(
+                screen_index=i, tally_index=j, tally_type=tally_type,
+            )
+            screen, tally = tmp_conf.create_tally(screen)
+            assert tally.id == t_id
+            sconf2 = mconf0.matches(tally, tally_type, return_matched=True)
+            assert sconf2.id == t_id
+            assert sconf2.tally_type == tally_type
+
+            for sconf in [sconf0, sconf1, sconf2]:
+                match = mconf1.matches(sconf, return_matched=True)
+                assert match == sconf
+                assert match is not sconf
+                assert match in mconf1.tallies
+                assert mconf1.search_memoized(sconf) is match
+                assert mconf1.search_memoized(sconf.id, sconf.tally_type) is match
+            match = mconf1.search_memoized(tally, sconf2.tally_type)
+            assert match == sconf2
+
+    assert mconf0.memoized_tally_confs == mconf1.memoized_tally_confs
