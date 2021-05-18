@@ -75,6 +75,7 @@ class IOContainer(Dispatcher):
         """
         if key is None:
             key = self.key_for_object(obj)
+        obj.id = key
         self.objects[key] = obj
         if self.running:
             await obj.open()
@@ -102,6 +103,8 @@ class IOContainer(Dispatcher):
     def key_for_object(self, obj: BaseIO):
         """Create a unique key based on the class namespace
         """
+        if obj.id is not None:
+            return obj.id
         ns = '.'.join(obj.namespace.split('.')[1:])
         ix = 0
         key = f'{ns}:{ix:03d}'
@@ -117,6 +120,7 @@ class IOContainer(Dispatcher):
         coros = set()
         for key, val in data.items():
             obj = BaseIO.deserialize(val)
+            obj.id = key
             self.objects[key] = obj
             if self.running:
                 coros.add(obj.open())

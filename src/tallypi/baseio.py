@@ -80,8 +80,22 @@ class BaseIO(Dispatcher):
             BaseIO._BaseIO__subclass_map[cls_namespace] = cls
 
     def __init__(self, config: TallyConfig):
+        self.__id = None
         self.config = config
         self.running = False
+
+    @property
+    def id(self) -> Optional[str]:
+        """Unique identifier when added as a member of :class:`.manager.IOContainer`
+        """
+        return self.__id
+    @id.setter
+    def id(self, value: str):
+        if value == self.id:
+            return
+        if self.id is not None:
+            raise ValueError('id can only be set once')
+        self.__id = value
 
     # @final
     @classmethod
