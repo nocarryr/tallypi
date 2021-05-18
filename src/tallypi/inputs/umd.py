@@ -125,9 +125,9 @@ class UmdInput(BaseInput, namespace='umd.UmdInput', final=True):
     def _on_receiver_tally_added(self, tally, **kwargs):
         if self.tally_matches(tally):
             self._tally_keys.add(tally.id)
-            self.emit('on_tally_added', tally)
+            self.emit('on_tally_added', self, tally)
 
     @logger.catch
     def _on_receiver_tally_updated(self, tally: Tally, props_changed: Set[str], **kwargs):
         if tally.id in self._tally_keys:
-            self.emit('on_tally_updated', tally, props_changed)
+            self.emit('on_tally_updated', self, tally, props_changed)

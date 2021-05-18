@@ -46,7 +46,7 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
         self.tally = Tally(self.config.tally_index)
         self.tally.bind(on_update=self._on_tallyobj_update)
         self.emit('on_screen_added', self, self.screen)
-        self.emit('on_tally_added', self.tally)
+        self.emit('on_tally_added', self, self.tally)
         self.button = gpiozero.Button(self.pin)
         self.button.when_pressed = self._on_button_pressed
         self.button.when_released = self._on_button_released
@@ -89,7 +89,7 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
     def _on_tallyobj_update(self, tally: Tally, props_changed: Iterable[str], **kwargs):
         if self.config.tally_type.name not in props_changed:
             return
-        self.emit('on_tally_updated', [self.config.tally_type.name])
+        self.emit('on_tally_updated', self, tally, [self.config.tally_type.name])
 
     def _on_button_pressed(self, button):
         if button is not self.button:

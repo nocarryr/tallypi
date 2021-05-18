@@ -215,7 +215,7 @@ class BaseIO(Dispatcher):
         """
         return self.config.matches(tally, tally_type, return_matched)
 
-    async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
+    async def on_receiver_tally_change(self, inp: 'BaseInput', tally: Tally, *args, **kwargs):
         """Callback for tally updates from :class:`tslumd.tallyobj.Tally`
         """
         pass
@@ -234,15 +234,15 @@ class BaseInput(BaseIO, namespace='input'):
         config: The initial value for :attr:`~BaseIO.config`
 
     :Events:
-        .. event:: on_screen_added(instance: BaseInput, screen: Screen)
+        .. event:: on_screen_added(instance: BaseInput, screen: tslumd.tallyobj.Screen)
 
             Fired when a :class:`~tslumd.tallyobj.Screen` has been added
 
-        .. event:: on_tally_added(tally: Tally)
+        .. event:: on_tally_added(instance: BaseInput, tally: tslumd.tallyobj.Tally)
 
             Fired when a :class:`~tslumd.tallyobj.Tally` instance has been added
 
-        .. event:: on_tally_updated(tally: Tally)
+        .. event:: on_tally_updated(instance: BaseInput, tally: tslumd.tallyobj.Tally)
 
             Fired when any :class:`~tslumd.tallyobj.Tally` instance
             has been updated

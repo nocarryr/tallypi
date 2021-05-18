@@ -173,12 +173,12 @@ class Inputs(IOContainer):
     """Container for :class:`~.baseio.BaseInput` instances
 
     :Events:
-        .. event:: on_tally_added(tally: tslumd.tallyobj.Tally)
+        .. event:: on_tally_added(inp: BaseInput, tally: tslumd.tallyobj.Tally)
 
             Fired when the :event:`.baseio.BaseInput.on_tally_added`
             event received from any of the inputs in the container
 
-        .. event:: on_tally_updated(tally: tslumd.tallyobj.Tally)
+        .. event:: on_tally_updated(inp: BaseInput, tally: tslumd.tallyobj.Tally)
 
             Fired when the :event:`.baseio.BaseInput.on_tally_updated`
             event received from any of the inputs in the container
