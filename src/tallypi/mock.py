@@ -27,7 +27,9 @@ def mock_gpio():
             logger.debug(f'{self}._set_state({value})')
         def _set_frequency(self, value):
             super()._set_frequency(value)
-            logger.debug(f'{self}._set_frequency({value})')
+            if value is not None:
+                logger.debug(f'{self}._set_frequency({value})')
+
 
     Device.pin_factory = MockFactory()
     Device.pin_factory.pin_class = LoggingMockPWMPin
