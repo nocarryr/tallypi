@@ -5,7 +5,9 @@ from typing import Dict, Tuple, Set, Optional, ClassVar, Iterable, Union
 from pydispatch import Dispatcher
 from tslumd import Screen, Tally, TallyColor, TallyKey, TallyType
 
-from .common import TallyConfig, SingleTallyConfig, MultiTallyConfig
+from .common import (
+    TallyConfig, SingleTallyConfig, MultiTallyConfig, TallyOrTallyConfig,
+)
 from .config import Option
 
 __all__ = ('BaseIO', 'BaseInput', 'BaseOutput')
@@ -190,14 +192,28 @@ class BaseIO(Dispatcher):
         """
         return self.config.matches_screen(screen)
 
-    def tally_matches(self, tally: Tally) -> bool:
+    def tally_matches(
+        self,
+        tally: Union[TallyOrTallyConfig, TallyKey],
+        tally_type: Optional[TallyType] = TallyType.all_tally,
+        return_matched: Optional[bool] = False
+    ) -> Union[bool, SingleTallyConfig]:
         """Determine whether the given tally matches the :attr:`config`
 
         Uses either :meth:`SingleTallyConfig.matches` or
         :meth:`MultiTallyConfig.matches`, depending on which of the two are
         used for the :class:`BaseIO` subclass
+
+        Arguments:
+            tally: Either another :class:`SingleTallyConfig`, a
+                :class:`tslumd.tallyobj.Tally` instance or a :term:`TallyKey`
+            tally_type: If provided, a :class:`~tslumd.common.TallyType` member
+                (or members) to match against
+            return_matched: If False (the default), only return a boolean result,
+                otherwise return the matched :class:`SingleTallyConfig` if one
+                was found.
         """
-        return self.config.matches(tally)
+        return self.config.matches(tally, tally_type, return_matched)
 
     async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
         """Callback for tally updates from :class:`tslumd.tallyobj.Tally`
