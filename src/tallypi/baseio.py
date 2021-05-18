@@ -215,7 +215,7 @@ class BaseIO(Dispatcher):
         """
         return self.config.matches(tally, tally_type, return_matched)
 
-    async def on_receiver_tally_change(self, inp: 'BaseInput', tally: Tally, *args, **kwargs):
+    async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
         """Callback for tally updates from :class:`tslumd.tallyobj.Tally`
         """
         pass
@@ -388,7 +388,7 @@ class BaseOutput(BaseIO, namespace='output'):
         self.bound_input_tally_keys[tally_key].add(inp.id)
         tally.bind_async(loop, on_update=self.on_receiver_tally_change)
         props_changed = ('rh_tally', 'txt_tally', 'lh_tally')
-        await self.on_receiver_tally_change(inp, tally, props_changed=props_changed)
+        await self.on_receiver_tally_change(tally, props_changed=props_changed)
 
     def get_all_input_tallies(self, tally_key: TallyKey) -> Iterable[Tuple[BaseInput, Tally]]:
         """Get all :class:`~tslumd.tallyobj.Tally` objects in :attr:`bound_inputs`

@@ -129,7 +129,7 @@ class Indicator(Base, namespace='Indicator', final=True):
         self.device.show()
         self._brightness = brightness
 
-    async def on_receiver_tally_change(self, inp: '.baseio.BaseInput', tally: Tally, props_changed: Set[str], **kwargs):
+    async def on_receiver_tally_change(self, tally: Tally, props_changed: Set[str], **kwargs):
         if not self.running:
             return
         if not self.tally_matches(tally):
@@ -213,7 +213,7 @@ class Matrix(Base, namespace='Matrix', final=True):
         return self.multi_config.matches(tally, tally_type, return_matched)
 
     @logger.catch
-    async def on_receiver_tally_change(self, inp: '.baseio.BaseInput', tally: Tally, props_changed: Set[str], **kwargs):
+    async def on_receiver_tally_change(self, tally: Tally, props_changed: Set[str], **kwargs):
         changed = set()
         for prop in props_changed:
             if prop not in TallyType.__members__:

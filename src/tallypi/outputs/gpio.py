@@ -87,7 +87,7 @@ class BaseLED(BaseOutput, namespace='gpio'):
         """
         raise NotImplementedError
 
-    async def on_receiver_tally_change(self, inp: '.baseio.BaseInput', tally: Tally, *args, **kwargs):
+    async def on_receiver_tally_change(self, tally: Tally, *args, **kwargs):
         if not self.running:
             return
         if not self.tally_matches(tally):
