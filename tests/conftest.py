@@ -20,3 +20,9 @@ def fake_rgb5x5(monkeypatch):
     mock.mock()
     import rgbmatrix5x5
     assert rgbmatrix5x5.RGBMatrix5x5.__module__ == 'tallypi.mock'
+
+@pytest.fixture
+def fake_gpio(monkeypatch):
+    monkeypatch.setenv('TALLYPI_MOCK', 'gpio', prepend=':')
+    from tallypi import mock
+    mock.mock()
