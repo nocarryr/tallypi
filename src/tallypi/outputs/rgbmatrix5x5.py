@@ -134,7 +134,7 @@ class Indicator(Base, namespace='Indicator', final=True):
             return
         if not self.tally_matches(tally):
             return
-        color = getattr(tally, self.config.tally_type.name)
+        color = self.get_merged_tally(tally, self.config.tally_type)
         if color != self._color:
             await self.set_color(color)
         brightness = tally.normalized_brightness
@@ -167,13 +167,12 @@ class Matrix(Base, namespace='Matrix', final=True):
 
     def build_multi_config(self) -> MultiTallyConfig:
         self.tally_type_map.clear()
-        ttypes = [tt for tt in TallyType if tt != TallyType.no_tally]
         tconfs = []
         scr = self.config.screen_index
         start_index = self.config.tally_index
         for i in range(5):
             tally_index = start_index + i
-            for j, ttype in enumerate(ttypes):
+            for j, ttype in enumerate(TallyType.all()):
                 pixel = (j, i)
                 tconf = SingleTallyConfig(
                     screen_index=scr,
@@ -219,9 +218,9 @@ class Matrix(Base, namespace='Matrix', final=True):
         for prop in props_changed:
             if prop not in TallyType.__members__:
                 continue
-            ttype = getattr(TallyType, prop, None)
+            ttype = TallyType.from_str(prop)
             pixel = self.tally_type_map.get(tally.id + (ttype,))
-            color = getattr(tally, prop)
+            color = self.get_merged_tally(tally, ttype)
             if color == self.get(pixel):
                 continue
             self[pixel] = color

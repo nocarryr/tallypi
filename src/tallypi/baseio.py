@@ -284,18 +284,22 @@ class BaseInput(BaseIO, namespace='input'):
         """
         raise NotImplementedError
 
-    def get_tally_color(self, tally_conf: SingleTallyConfig) -> Optional[TallyColor]:
+    def get_tally_color(self, tally_key: TallyKey, tally_type: TallyType) -> Optional[TallyColor]:
         """Get the current :class:`~tslumd.common.TallyColor` for the given
-        :class:`config specifier <SingleTallyConfig>`
+        :term:`TallyKey` and :term:`TallyType`
 
         If the tally state is unknown for does not match the :attr:`~BaseIO.config`,
         ``None`` is returned
         """
-        if not self.tally_matches(tally_conf):
+        tally_conf = self.tally_matches(tally_key, tally_type, return_matched=True)
+        if not tally_conf:
             return None
         tally = self.get_tally(tally_conf.tally_key)
         if tally is not None:
-            return getattr(tally, tally_conf.tally_type.name)
+            ttype = tally_conf.tally_type & tally_type
+            if ttype == TallyType.no_tally:
+                return None
+            return tally[ttype] & tally_conf.color_mask
 
 
 class BaseOutput(BaseIO, namespace='output'):
@@ -403,3 +407,28 @@ class BaseOutput(BaseIO, namespace='output'):
             tally = inp.get_tally(tally_key)
             if tally is not None:
                 yield inp, tally
+
+    def get_merged_tally(self, tally: Union[TallyKey, Tally], tally_type: TallyType) -> TallyColor:
+        """Get the merged tally color of the :term:`TallyKey` / :term:`TallyType`
+        combination across all inputs
+
+        Searches in all of the :attr:`bound_inputs` for any matching tally and
+        tally_type. The result is a combination of all of the matches as described
+        in :meth:`tslumd.tallyobj.Tally.merge_color`
+
+        Arguments:
+            tally: Either a :term:`TallyKey` or a :class:`~tslumd.tallyobj.Tally`
+                object
+            tally_type (TallyType): The :term:`TallyType`
+        """
+        result = TallyColor.OFF
+        if isinstance(tally, Tally):
+            tally_key = tally.id
+            result |= tally[tally_type]
+        else:
+            tally_key = tally
+        for inp, _tally in self.get_all_input_tallies(tally_key):
+            color = inp.get_tally_color(tally_key, tally_type)
+            if color is not None:
+                result |= color
+        return result
