@@ -304,66 +304,102 @@ class BaseOutput(BaseIO, namespace='output'):
     Arguments:
         config: The initial value for :attr:`~BaseIO.config`
     """
+
+    bound_inputs: Dict[str, BaseInput]
+    """Mapping of all :class:`BaseInput` instances this object is bound to,
+    stored using the :attr:`id <BaseIO.id>` as the key
+
+    (see :meth:`bind_to_input`)
+    """
+
+    bound_input_tally_keys: Dict[TallyKey, Set[str]]
+
+    def __init__(self, config: TallyConfig):
+        self.bound_inputs = {}
+        self.bound_input_tally_keys = {}
+        self._input_lock = asyncio.Lock()
+        super().__init__(config)
+
     async def bind_to_input(self, inp: BaseInput):
         """Find and set up listeners for matching tallies in the
         :class:`input <BaseInput>`
 
-        Searches for any matching screens in the input and calls
-        :meth:`bind_to_screen` for them.
-        Also binds to the :event:`BaseInput.on_screen_added` event to listen
-        for new screens
+        * Searches for any :meth:`matching tallies <BaseIO.tally_matches>` in the
+          input and calls :meth:`bind_to_tally` for them.
+        * Store the input object in :attr:`bound_inputs`
+        * Binds to the :event:`BaseInput.on_tally_added` event to listen
+          for new tallies.
         """
         loop = asyncio.get_event_loop()
         coros = set()
-        for screen in inp.get_all_screens():
-            if not self.screen_matches(screen):
-                continue
-            coros.add(self.bind_to_screen(inp, screen))
-        inp.bind_async(loop, on_screen_added=self.on_screen_added)
-        if len(coros):
-            await asyncio.gather(*coros)
+        if inp.id in self.bound_inputs:
+            return
+        async with self._input_lock:
+            assert inp.id is not None
+            assert inp.id not in self.bound_inputs
+            assert inp.id not in self.bound_input_tally_keys
+            self.bound_inputs[inp.id] = inp
+            for tally in inp.get_all_tallies():
+                if not self.tally_matches(tally):
+                    continue
+                coros.add(self.bind_to_tally(inp, tally))
 
-    async def bind_to_screen(self, inp: BaseInput, screen: Screen):
-        """Find and set up listeners for matching tallies in the given
-        :class:`input <BaseInput>` and :class:`~tslumd.tallyobj.Screen`
+            if len(coros):
+                await asyncio.gather(*coros)
+            inp.bind_async(loop, on_tally_added=self.on_tally_added)
 
-        Searches for any matching tallies in the input and calls
-        :meth:`bind_to_tally` for them.
-        Also binds to the :event:`BaseInput.on_tally_added` event to listen
-        for new tallies from the input
-
-        Arguments:
-            inp: The :class:`BaseInput` instance
-            screen: The :class:`~tslumd.tallyobj.Screen` within the input
+    async def unbind_from_input(self, inp: BaseInput):
+        """Remove all event handlers from an input that were previously set up by
+        :meth:`bind_to_input`
         """
-        loop = asyncio.get_event_loop()
-        coros = set()
-        for tally in inp.get_all_tallies(screen.index):
-            if not self.tally_matches(tally):
-                continue
-            coros.add(self.bind_to_tally(tally))
-        screen.bind_async(loop, on_tally_added=self.on_tally_added)
-        if len(coros):
-            await asyncio.gather(*coros)
+        async with self._input_lock:
+            inp.unbind(self)
+            for s in self.bound_input_tally_keys:
+                s.discard(inp.id)
+            del self.bound_inputs[inp.id]
+            for tally in inp.get_all_tallies():
+                tally.unbind(self)
 
     @logger.catch
-    async def on_screen_added(self, inp: BaseInput, screen: Screen, **kwargs):
-        if self.screen_matches(screen):
-            await self.bind_to_screen(inp, screen)
-
-    @logger.catch
-    async def on_tally_added(self, tally: Tally, **kwargs):
+    async def on_tally_added(self, inp: BaseInput, tally: Tally, **kwargs):
+        if inp.id not in self.bound_inputs:
+            return
         if self.tally_matches(tally):
-            await self.bind_to_tally(tally)
+            async with self._input_lock:
+                await self.bind_to_tally(inp, tally)
 
-    async def bind_to_tally(self, tally: Tally):
+    @logger.catch
+    async def bind_to_tally(self, inp: BaseInput, tally: Tally):
         """Update current state and subscribe to changes from the given
         :class:`~tslumd.tallyobj.Tally`
 
         Calls :meth:`~BaseIO.on_receiver_tally_change` and binds tally update
         events to it
         """
+
         loop = asyncio.get_event_loop()
+        tally_key = tally.id
+        if tally_key not in self.bound_input_tally_keys:
+            self.bound_input_tally_keys[tally_key] = set()
+        self.bound_input_tally_keys[tally_key].add(inp.id)
         tally.bind_async(loop, on_update=self.on_receiver_tally_change)
         props_changed = ('rh_tally', 'txt_tally', 'lh_tally')
-        await self.on_receiver_tally_change(tally, props_changed=props_changed)
+        await self.on_receiver_tally_change(inp, tally, props_changed=props_changed)
+
+    def get_all_input_tallies(self, tally_key: TallyKey) -> Iterable[Tuple[BaseInput, Tally]]:
+        """Get all :class:`~tslumd.tallyobj.Tally` objects in :attr:`bound_inputs`
+        with the given :term:`TallyKey`
+
+        Yields
+        ------
+        inp : BaseInput
+            The :class:`BaseInput` instance containing the tally
+        tally : Tally
+            The :class:`~tslumd.tallyobj.Tally` instance
+        """
+        input_ids = self.bound_input_tally_keys.get(tally_key, set())
+        for key in input_ids:
+            inp = self.bound_inputs[key]
+            tally = inp.get_tally(tally_key)
+            if tally is not None:
+                yield inp, tally

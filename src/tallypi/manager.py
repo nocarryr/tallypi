@@ -223,6 +223,21 @@ class Outputs(IOContainer):
         if len(coros):
             await asyncio.gather(*coros)
 
+    async def unbind_from_input(self, inp: BaseInput, outp: BaseOutput):
+        await outp.unbind_from_input(inp)
+
+    async def unbind_all_from_input(self, inp: BaseInput):
+        """Unbind all :class:`outpus <.baseio.BaseOutput>` from the given
+        :class:`input <.baseio.BaseInput>`
+
+        Calls :meth:`.baseio.BaseOutput.unbind_from_input` for each output instance
+        """
+        coros = set()
+        for outp in self.values():
+            coros.add(self.unbind_from_input(inp=inp, outp=outp))
+        if len(coros):
+            await asyncio.gather(*coros)
+
 
 class Manager:
     """Manager for tally inputs and outputs
@@ -252,6 +267,7 @@ class Manager:
         self.outputs = Outputs()
         self.inputs.bind_async(self.loop,
             object_added=self.on_input_added,
+            object_removed=self.on_input_removed,
             update=self.on_io_update,
         )
         self.outputs.bind_async(self.loop,
@@ -338,6 +354,10 @@ class Manager:
     @logger.catch
     async def on_input_added(self, key: str, obj: BaseInput, **kwargs):
         await self.outputs.bind_all_to_input(obj)
+
+    @logger.catch
+    async def on_input_removed(self, key: str, obj: BaseInput, **kwargs):
+        await self.outputs.unbind_all_from_input(obj)
 
     @logger.catch
     async def on_output_added(self, key: str, obj: BaseOutput, **kwargs):
