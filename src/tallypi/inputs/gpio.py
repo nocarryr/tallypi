@@ -83,7 +83,7 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
 
     def _set_tally_state(self, state: bool):
         attr = self.config.tally_type.name
-        color = {True: TallyColor.RED, False: TallyColor.OFF}[state]
+        color = {True: self.config.color_mask, False: TallyColor.OFF}[state]
         setattr(self.tally, attr, color)
 
     def _on_tallyobj_update(self, tally: Tally, props_changed: Iterable[str], **kwargs):
