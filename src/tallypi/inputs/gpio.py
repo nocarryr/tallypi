@@ -43,7 +43,6 @@ class GpioInput(BaseInput, namespace='gpio.GpioInput', final=True):
             return
         self.running = True
         self.screen, self.tally = self.config.create_tally()
-        self.tally = Tally(self.config.tally_index)
         self.tally.bind(on_update=self._on_tallyobj_update)
         self.emit('on_screen_added', self, self.screen)
         self.emit('on_tally_added', self, self.tally)
