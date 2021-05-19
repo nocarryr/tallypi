@@ -25,6 +25,8 @@ def _parse_propertyobj_section(self, section):
             prop_cls = 'DictProperty'
         elif _type == 'list':
             prop_cls = 'ListProperty'
+        elif _type == 'set':
+            prop_cls = 'SetProperty'
         field_block.extend(self._indent([f':propcls: {prop_cls}'], 3))
         # field_block.append(f'.. propertyobj:: {_name} -> :class:`~pydispatch.properties.{prop_cls}`(:class:`{_type}`)')
         field_block.append('')
@@ -85,13 +87,18 @@ class PropertyObjDirective(PyAttribute):
                 prop_cls = 'DictProperty'
             elif prop_type == 'list':
                 prop_cls = 'ListProperty'
-        prop_cls_xr = f':class:`~pydispatch.properties.{prop_cls}`'
+            elif prop_type == 'set':
+                prop_cls = 'SetProperty'
+        if prop_cls == 'SetProperty':
+            prop_cls_xr = f'tallypi.utils.{prop_cls}'
+        else:
+            prop_cls_xr = f'pydispatch.properties.{prop_cls}'
         prop_type_xr = f':class:`{prop_type}`'
 
         # self.options['annotation'] = f'{prop_cls_xr}({prop_cls})'
         anno = addnodes.desc_returns('', '')
         # anno += ANNO_CLS(' -> ', ' -> ')
-        anno += build_xref(prop_cls, f'pydispatch.properties.{prop_cls}', env=self.env)
+        anno += build_xref(prop_cls, prop_cls_xr, env=self.env)
         anno += ANNO_CLS('(', '(')
         anno += build_xref(prop_type, prop_type, env=self.env)
         anno += ANNO_CLS(')', ')')
