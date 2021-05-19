@@ -20,7 +20,7 @@ TallyOrMultiTallyConfig = Union[TallyOrTallyConfig, 'MultiTallyConfig']
 TallyColorOption = Option(
     name='color_mask', type=str, required=False, title='Color',
     serialize_cb=lambda x: x.to_str(),
-    validate_cb=lambda x: TallyType.from_str(x),
+    validate_cb=lambda x: TallyColor.from_str(x),
 )
 
 def normalize_screen(obj: Union[TallyKey, TallyOrMultiTallyConfig, int]) -> Union[None, int]:
