@@ -46,7 +46,7 @@ async def test_indicator(fake_rgb5x5, faker):
             for tally_color in TallyColor:
                 tally.lh_tally = tally_color
 
-                await indicator.on_receiver_tally_change(None, tally, set(['lh_tally']))
+                await indicator.on_receiver_tally_change(tally, set(['lh_tally']))
                 rgb = indicator.color_map[tally_color]
                 assert all([c == rgb for c in device.pixels.values()])
 
@@ -54,6 +54,6 @@ async def test_indicator(fake_rgb5x5, faker):
         rgb = indicator.color_map[TallyColor.RED]
         for i in range(3):
             tally.brightness = i
-            await indicator.on_receiver_tally_change(None, tally, set(['brightness']))
+            await indicator.on_receiver_tally_change(tally, set(['brightness']))
             assert all([c == rgb for c in device.pixels.values()])
             assert device.brightness == tally.normalized_brightness
