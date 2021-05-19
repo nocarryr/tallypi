@@ -13,3 +13,4 @@
 
     gpio
     rgbmatrix5x5
+    umd

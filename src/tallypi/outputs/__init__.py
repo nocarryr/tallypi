@@ -2,3 +2,4 @@
 """
 from .gpio import *
 from .rgbmatrix5x5 import *
+from .umd import *

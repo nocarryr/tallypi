@@ -16,3 +16,14 @@ outputs:
       brightness_scale: 1.0
       config: {name: Out 1, tally_index: 1, tally_type: rh_tally}
       pin: 5
+  umd.UmdOutput:000:
+    namespace: output.umd.UmdOutput
+    options:
+      config:
+        allow_all: true
+        name: 'Umd Out'
+        tallies: []
+      clients:
+        - hostaddr: 0.0.0.0
+          hostport: 65001
+      all_off_on_close: false
